@@ -23,6 +23,7 @@ export interface NfsePayload {
   natureza_operacao: number // 1 = Tributação no município
   optante_simples_nacional: boolean
   regime_especial_tributacao: number // 1-6
+  serie?: string // Série da NFS-e (configurada por tenant)
 
   prestador: {
     cnpj: string
