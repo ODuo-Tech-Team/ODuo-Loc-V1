@@ -589,14 +589,15 @@ export class NfseService {
     }
 
     // Montar payload
-    console.log('[NFS-e] Série configurada:', tenant.fiscalConfig?.nfseSerie)
+    const serieConfigured = tenant.fiscalConfig?.nfseSerie?.trim()
+    console.log('[NFS-e] Série configurada:', serieConfigured || '(não configurada - campo não será enviado)')
 
     const payload: NfsePayload = {
       data_emissao: this.getCurrentDateTimeBrazil(),
       natureza_operacao: 1, // 1 = Tributação no município
       optante_simples_nacional: tenant.regimeTributario === 'SIMPLES_NACIONAL' || tenant.regimeTributario === 'MEI',
       regime_especial_tributacao: this.getRegimeEspecialTributacao(tenant.regimeTributario),
-      serie: tenant.fiscalConfig?.nfseSerie, // Série configurada pelo tenant
+      ...(serieConfigured && { serie: serieConfigured }), // Só envia se configurada
       prestador: {
         cnpj: onlyNumbers(tenant.cnpj!),
         inscricao_municipal: onlyNumbers(tenant.inscricaoMunicipal!),
