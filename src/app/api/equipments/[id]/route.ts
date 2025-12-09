@@ -262,13 +262,10 @@ export async function DELETE(
       )
     }
 
-    // Verificar dependências que impedem deleção
+    // Verificar dependências críticas que impedem deleção
     const dependencies = []
     if (equipment._count.bookings > 0) {
       dependencies.push(`${equipment._count.bookings} reserva(s)`)
-    }
-    if (equipment._count.leadInterests > 0) {
-      dependencies.push(`${equipment._count.leadInterests} lead(s) interessado(s)`)
     }
 
     // Buscar BookingItems para verificar quais têm bookings válidos
@@ -317,7 +314,16 @@ export async function DELETE(
       )
     }
 
-    // Se não tem dependências, pode deletar
+    // Deletar em cascata os registros relacionados que não são críticos
+    // LeadEquipmentInterest: Interesse de leads pode ser deletado junto
+    if (equipment._count.leadInterests > 0) {
+      await prisma.leadEquipmentInterest.deleteMany({
+        where: { equipmentId: id }
+      })
+      console.log(`[Equipment DELETE] Deletou ${equipment._count.leadInterests} LeadEquipmentInterest do equipamento ${id}`)
+    }
+
+    // Se não tem dependências críticas, pode deletar
     await prisma.equipment.delete({
       where: {
         id,
