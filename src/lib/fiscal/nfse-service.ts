@@ -589,16 +589,21 @@ export class NfseService {
       }
 
       console.log('[NFS-e] ✅ Endereço do tomador adicionado:', payload.tomador.endereco)
-    }
 
-    // Adicionar email e telefone APÓS o endereço (ordem correta para XML Focus NFe)
-    if (booking.customer.email) {
-      payload.tomador.email = booking.customer.email
-      console.log('[NFS-e] Email do tomador adicionado')
-    }
-    if (booking.customer.phone) {
-      payload.tomador.telefone = booking.customer.phone
-      console.log('[NFS-e] Telefone do tomador adicionado')
+      // Adicionar email e telefone APENAS quando há endereço (ordem correta para XML Focus NFe)
+      // Email e telefone devem vir APÓS o endereço no schema XML
+      if (booking.customer.email) {
+        payload.tomador.email = booking.customer.email
+        console.log('[NFS-e] Email do tomador adicionado')
+      }
+      if (booking.customer.phone) {
+        payload.tomador.telefone = booking.customer.phone
+        console.log('[NFS-e] Telefone do tomador adicionado')
+      }
+    } else {
+      console.warn('[NFS-e] ⚠️  Endereço não disponível - email e telefone não serão enviados (exigência do schema XML)')
+      console.warn('[NFS-e] 💡 DICA: Para enviar email/telefone na NFS-e, complete o endereço do cliente no cadastro')
+      console.warn('[NFS-e] 📝 Campo obrigatório: Endereço (logradouro)')
     }
 
     // Adicionar código do serviço se configurado
