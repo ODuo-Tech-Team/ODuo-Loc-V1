@@ -236,19 +236,66 @@ export async function DELETE(
 
     const { id } = await params
 
-    const equipment = await prisma.equipment.deleteMany({
+    // Verificar se equipamento existe
+    const equipment = await prisma.equipment.findFirst({
       where: {
         id,
         tenantId: session.user.tenantId,
       },
+      include: {
+        _count: {
+          select: {
+            bookings: true,
+            bookingItems: true,
+            leadInterests: true,
+            units: true,
+            stockMovements: true,
+          }
+        }
+      }
     })
 
-    if (equipment.count === 0) {
+    if (!equipment) {
       return NextResponse.json(
         { error: "Equipamento não encontrado" },
         { status: 404 }
       )
     }
+
+    // Verificar dependências que impedem deleção
+    const dependencies = []
+    if (equipment._count.bookings > 0) {
+      dependencies.push(`${equipment._count.bookings} reserva(s)`)
+    }
+    if (equipment._count.bookingItems > 0) {
+      dependencies.push(`${equipment._count.bookingItems} item(ns) em reservas`)
+    }
+    if (equipment._count.leadInterests > 0) {
+      dependencies.push(`${equipment._count.leadInterests} lead(s) interessado(s)`)
+    }
+
+    if (dependencies.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Não é possível deletar este equipamento",
+          reason: `Este equipamento possui ${dependencies.join(", ")}. Para preservar o histórico, você pode inativar o equipamento em vez de deletá-lo.`,
+          suggestion: "INATIVAR",
+          dependencies: {
+            bookings: equipment._count.bookings,
+            bookingItems: equipment._count.bookingItems,
+            leadInterests: equipment._count.leadInterests,
+          }
+        },
+        { status: 400 }
+      )
+    }
+
+    // Se não tem dependências, pode deletar
+    await prisma.equipment.delete({
+      where: {
+        id,
+      },
+    })
 
     // Invalidar cache
     revalidateEquipments(session.user.tenantId)
@@ -256,6 +303,19 @@ export async function DELETE(
     return NextResponse.json({ success: true }, { status: 200 })
   } catch (error) {
     console.error("Erro ao deletar equipamento:", error)
+
+    // Verificar se é erro de constraint do banco
+    if (error instanceof Error && error.message.includes("Foreign key constraint")) {
+      return NextResponse.json(
+        {
+          error: "Não é possível deletar este equipamento",
+          reason: "Este equipamento está sendo usado em outras partes do sistema. Você pode inativá-lo em vez de deletá-lo.",
+          suggestion: "INATIVAR"
+        },
+        { status: 400 }
+      )
+    }
+
     return NextResponse.json(
       { error: "Erro ao deletar equipamento" },
       { status: 500 }
