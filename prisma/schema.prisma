@@ -1,0 +1,1493 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") // Direct connection for migrations
+}
+
+// Tenant (Multi-tenancy)
+model Tenant {
+  id           String  @id @default(cuid())
+  slug         String  @unique // ex: "locadora-xyz"
+  domain       String? @unique // custom domain opcional
+  name         String // "Locadora XYZ"
+  logo         String?
+  primaryColor String  @default("#000000")
+
+  // Dados de contato
+  email   String
+  phone   String
+  address String?
+
+  // Integrações
+  whatsappToken    String? @db.Text
+  whatsappPhone    String?
+  googleCalendarId String?
+  stripeAccountId  String?
+
+  // Dados Fiscais
+  cnpj               String?
+  inscricaoEstadual  String?
+  inscricaoMunicipal String?
+  regimeTributario   String? // SIMPLES_NACIONAL, LUCRO_PRESUMIDO, LUCRO_REAL, MEI
+  codigoMunicipio    String? // Código IBGE do município
+
+  // Feature Flags / Módulos
+  nfseEnabled          Boolean @default(false) // Notas Fiscais (NFS-e)
+  stockEnabled         Boolean @default(true) // Gestão de Estoque
+  financialEnabled     Boolean @default(true) // Módulo Financeiro
+  reportsEnabled       Boolean @default(true) // Relatórios Avançados
+  apiEnabled           Boolean @default(false) // API de Integração
+  webhooksEnabled      Boolean @default(false) // Webhooks
+  multiUserEnabled     Boolean @default(true) // Múltiplos Usuários
+  customDomainsEnabled Boolean @default(false) // Domínios Personalizados
+
+  // Assinatura (billing)
+  asaasCustomerId String? @unique // ID do tenant como cliente no Asaas
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Templates de documentos
+  contractTemplate String? @db.Text
+  receiptTemplate  String? @db.Text
+
+  users          User[]
+  equipments     Equipment[]
+  bookings       Booking[]
+  customers      Customer[]
+  activityLogs   ActivityLog[]
+  apiKeys        ApiKey[]
+  webhooks       Webhook[]
+  equipmentCosts EquipmentCost[]
+  stockMovements StockMovement[]
+  fiscalConfig   TenantFiscalConfig?
+  invoices       Invoice[]
+  subscription   Subscription?
+
+  // Transações Financeiras
+  transactionCategories TransactionCategory[]
+  financialTransactions FinancialTransaction[]
+  recurringTransactions RecurringTransaction[]
+
+  // Módulo Comercial
+  leads Lead[]
+
+  // Checklists
+  bookingChecklists  BookingChecklist[]
+  checklistTemplates ChecklistTemplate[]
+
+  // Categorias de Equipamentos
+  equipmentCategories EquipmentCategory[]
+}
+
+// Usuário (Admin da locadora)
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  passwordHash    String
+  name            String
+  role            Role      @default(ADMIN)
+  emailVerified   Boolean   @default(false)
+  emailVerifiedAt DateTime?
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  activityLogs       ActivityLog[]
+  autoLoginTokens    AutoLoginToken[]
+  stockMovements     StockMovement[]
+  verificationTokens VerificationToken[]
+  modulePermissions  UserModulePermission[]
+
+  // Módulo Comercial
+  leads          Lead[]
+  leadActivities LeadActivity[]
+
+  // Onboarding
+  onboardingCompleted     Boolean   @default(false)
+  onboardingCompletedAt   DateTime?
+  onboardingSkippedAt     DateTime?
+  onboardingTourCompleted Boolean   @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Token temporário para auto-login após registro
+model AutoLoginToken {
+  id        String   @id @default(cuid())
+  token     String   @unique // Token único e seguro
+  used      Boolean  @default(false)
+  expiresAt DateTime // Expira em 30 minutos
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([token, used, expiresAt])
+}
+
+// Token de verificação (email, reset de senha)
+model VerificationToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  type      TokenType
+  used      Boolean   @default(false)
+  expiresAt DateTime
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([token, type, used, expiresAt])
+  @@index([userId, type])
+}
+
+enum TokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+enum Role {
+  SUPER_ADMIN // ODuo - acesso total ao sistema
+  ADMIN // Dono da locadora - controle total do tenant
+  MANAGER // Gerente - cria e edita (não deleta)
+  OPERATOR // Operador - cria reservas, vê clientes e equipamentos
+  VIEWER // Visualizador - apenas leitura
+}
+
+// Permissões de módulo por usuário
+model UserModulePermission {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  module    SystemModule
+  canView   Boolean      @default(false)
+  canCreate Boolean      @default(false)
+  canEdit   Boolean      @default(false)
+  canDelete Boolean      @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, module])
+  @@index([userId])
+}
+
+enum SystemModule {
+  DASHBOARD
+  EQUIPAMENTOS
+  CLIENTES
+  RESERVAS
+  FINANCEIRO
+  RELATORIOS
+  USUARIOS
+  CONFIGURACOES
+  INTEGRACOES
+  MANUTENCAO
+  COMERCIAL
+}
+
+// Equipamento
+model Equipment {
+  id           String          @id @default(cuid())
+  name         String
+  description  String?         @db.Text
+  category     String
+  images       String[]
+  pricePerHour Float?
+  pricePerDay  Float
+  quantity     Int             @default(1) // Campo legado, manter para compatibilidade
+  status       EquipmentStatus @default(AVAILABLE)
+
+  // Tipo de rastreamento de estoque
+  // SERIALIZED: Cada unidade tem número de série (padrão atual)
+  // QUANTITY: Apenas controle por quantidade total
+  trackingType String @default("SERIALIZED")
+
+  // Campos de Gestão de Estoque
+  totalStock       Int    @default(1) // Total de unidades no inventário
+  availableStock   Int    @default(1) // Disponível para reserva
+  reservedStock    Int    @default(0) // Reservado em locações ativas
+  maintenanceStock Int    @default(0) // Em manutenção
+  damagedStock     Int    @default(0) // Avariado/danificado
+  minStockLevel    Int    @default(1) // Nível mínimo para alerta
+  unitCost         Float? // Custo unitário médio
+
+  // Dados de aquisição
+  purchasePrice Float?
+  purchaseDate  DateTime?
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  bookings         Booking[]
+  bookingItems     BookingItem[]
+  unavailableDates UnavailableDate[]
+  costs            EquipmentCost[]
+  documents        EquipmentDocument[]
+  stockMovements   StockMovement[]
+  rentalPeriods    RentalPeriod[]
+
+  // Unidades individuais (cada equipamento físico)
+  units                EquipmentUnit[]
+  maintenanceSchedules MaintenanceSchedule[]
+
+  // Transações Financeiras
+  financialTransactions FinancialTransaction[]
+  recurringTransactions RecurringTransaction[]
+
+  // Módulo Comercial
+  leadInterests LeadEquipmentInterest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, status])
+  @@index([tenantId, status, category])
+  @@index([tenantId, availableStock])
+}
+
+// Períodos de locação customizáveis
+model RentalPeriod {
+  id    String  @id @default(cuid())
+  days  Int // Quantidade de dias do período (ex: 1, 7, 15, 30)
+  price Float // Valor em reais para esse período
+  label String? // Label opcional (ex: "Diária", "Semanal", "Quinzenal", "Mensal")
+
+  equipmentId String
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([equipmentId, days]) // Não pode ter dois períodos com mesma quantidade de dias
+  @@index([equipmentId])
+}
+
+// Categorias de Equipamentos
+model EquipmentCategory {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  color       String? // Cor para badge (ex: "#3B82F6")
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+enum EquipmentStatus {
+  AVAILABLE
+  RENTED
+  MAINTENANCE
+  INACTIVE
+}
+
+// Bloqueios de data
+model UnavailableDate {
+  id        String   @id @default(cuid())
+  startDate DateTime
+  endDate   DateTime
+  reason    String?
+
+  equipmentId String
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// Cliente
+model Customer {
+  id String @id @default(cuid())
+
+  // Tipo de pessoa
+  personType String @default("PJ") // PF ou PJ
+
+  // Dados básicos
+  name      String // Nome completo (PF) ou Razão Social (PJ)
+  tradeName String? // Nome Fantasia (PJ)
+
+  // Documentos
+  cpfCnpj            String?
+  inscricaoEstadual  String?
+  inscricaoMunicipal String?
+  isIsentoIE         Boolean @default(false)
+
+  // Contatos
+  email          String?
+  phone          String? // Telefone principal
+  phoneSecondary String? // Telefone secundário
+  whatsapp       String?
+  contactName    String? // Nome do contato (PJ)
+
+  // Endereço expandido
+  street       String? // Logradouro
+  number       String? // Número
+  complement   String? // Complemento
+  neighborhood String? // Bairro
+  city         String?
+  state        String?
+  zipCode      String?
+  ibgeCode     String? // Código IBGE do município
+
+  // Campos legados (mantidos para compatibilidade)
+  address String? @map("address_legacy")
+
+  // Dados adicionais
+  notes    String? @db.Text
+  isActive Boolean @default(true)
+
+  // Relações
+  tenantId String
+  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+  sites    CustomerSite[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([cpfCnpj])
+  @@index([tenantId, isActive])
+}
+
+// Local de Obra / Entrega do Cliente
+model CustomerSite {
+  id String @id @default(cuid())
+
+  // Identificação
+  name String // "Obra Centro", "Canteiro Norte"
+
+  // Endereço
+  street       String? // Logradouro
+  number       String? // Número
+  complement   String? // Complemento
+  neighborhood String? // Bairro
+  city         String?
+  state        String?
+  zipCode      String?
+  ibgeCode     String? // Código IBGE do município
+
+  // Contato no local
+  contactName  String?
+  contactPhone String?
+
+  // Controle
+  isActive  Boolean @default(true)
+  isDefault Boolean @default(false)
+
+  // Relações
+  customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  bookings   Booking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([customerId, isActive])
+}
+
+// Orçamento / Locação
+model Booking {
+  id            String @id @default(cuid())
+  bookingNumber String @unique @default(cuid())
+
+  startDate DateTime
+  endDate   DateTime
+  startTime String?
+  endTime   String?
+
+  // Valores e cálculos
+  subtotal   Float? // Valor antes do desconto e frete
+  totalPrice Float
+  status     BookingStatus @default(PENDING)
+
+  // Sistema de Desconto
+  discountType   DiscountType? // PERCENTAGE ou FIXED
+  discountValue  Float? // Valor do desconto (% ou R$)
+  discountReason String? // Justificativa do desconto
+
+  // Validade do Orçamento
+  validUntil               DateTime? // Data de validade do orçamento
+  validityNotificationSent Boolean   @default(false)
+
+  // Sistema de Frete
+  freightType     FreightType? // FREE, FIXED, BY_REGION
+  freightValue    Float? // Valor do frete
+  freightRegionId String?
+  freightRegion   FreightRegion? @relation(fields: [freightRegionId], references: [id])
+
+  // Sistema de Multas
+  cancellationFeePercent Float? // % multa por cancelamento
+  lateFeePercent         Float? // % multa por atraso (por dia)
+  actualReturnDate       DateTime? // Data real de devolução
+
+  // Campo legado - manter para compatibilidade com reservas existentes
+  equipmentId String?
+  equipment   Equipment? @relation(fields: [equipmentId], references: [id])
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  // Local de entrega (opcional - se não informado, usa endereço do cliente)
+  customerSiteId String?
+  customerSite   CustomerSite? @relation(fields: [customerSiteId], references: [id])
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  paymentIntentId String?
+  paidAt          DateTime?
+
+  contractUrl String?
+  notes       String? @db.Text
+
+  confirmationSent Boolean @default(false)
+  reminderSent     Boolean @default(false)
+
+  googleEventId String?
+
+  // Relações
+  documents      BookingDocument[]
+  items          BookingItem[]
+  stockMovements StockMovement[]
+  invoices       Invoice[]
+  fees           BookingFee[] // Multas aplicadas
+  checklists     BookingChecklist[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, status])
+  @@index([tenantId, status, startDate])
+  @@index([equipmentId, startDate, endDate])
+  @@index([validUntil])
+}
+
+// Checklist de entrada/saída do equipamento
+model BookingChecklist {
+  id String @id @default(cuid())
+
+  type   ChecklistType   @default(PICKUP)
+  status ChecklistStatus @default(PENDING)
+
+  completedAt DateTime?
+  completedBy String?
+  notes       String?   @db.Text
+
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  items BookingChecklistItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([bookingId, type])
+  @@index([tenantId])
+}
+
+model BookingChecklistItem {
+  id String @id @default(cuid())
+
+  description String
+  checked     Boolean @default(false)
+  notes       String?
+  order       Int     @default(0)
+
+  checklistId String
+  checklist   BookingChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([checklistId])
+}
+
+// Template de checklist reutilizável
+model ChecklistTemplate {
+  id String @id @default(cuid())
+
+  name String
+  type ChecklistType @default(PICKUP)
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  items ChecklistTemplateItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, type])
+}
+
+model ChecklistTemplateItem {
+  id String @id @default(cuid())
+
+  description String
+  order       Int    @default(0)
+
+  templateId String
+  template   ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+}
+
+enum ChecklistType {
+  PICKUP // Saída/Entrega do equipamento
+  RETURN // Entrada/Devolução do equipamento
+}
+
+enum ChecklistStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  EXPIRED // Orçamento vencido
+}
+
+enum DiscountType {
+  PERCENTAGE // Desconto em porcentagem
+  FIXED // Desconto em valor fixo (R$)
+}
+
+enum FreightType {
+  FREE // Frete grátis
+  FIXED // Valor fixo
+  BY_REGION // Por região/tabela
+}
+
+// Região de Frete
+model FreightRegion {
+  id     String   @id @default(cuid())
+  name   String // "Zona Sul", "Interior", etc.
+  cities String[] // Lista de cidades
+  price  Float // Valor do frete
+
+  tenantId String
+  bookings Booking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+// Registro de Multas aplicadas
+model BookingFee {
+  id String @id @default(cuid())
+
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  type      FeeType // CANCELLATION ou LATE_RETURN
+  percent   Float // Porcentagem aplicada
+  baseValue Float // Valor base para cálculo
+  amount    Float // Valor calculado da multa
+  daysLate  Int? // Dias de atraso (se aplicável)
+
+  createdAt DateTime @default(now())
+
+  @@index([bookingId])
+}
+
+enum FeeType {
+  CANCELLATION // Multa por cancelamento
+  LATE_RETURN // Multa por atraso na devolução
+}
+
+// Registro de Atividades (Auditoria)
+model ActivityLog {
+  id          String  @id @default(cuid())
+  action      String // "CREATE", "UPDATE", "DELETE", "LOGIN", "LOGOUT"
+  entity      String // "USER", "CUSTOMER", "EQUIPMENT", "BOOKING"
+  entityId    String? // ID do registro afetado
+  description String  @db.Text // Descrição detalhada da ação
+  metadata    Json? // Dados adicionais (antes/depois, etc)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([userId, createdAt])
+  @@index([entity, entityId])
+}
+
+// API Keys para integração
+model ApiKey {
+  id     String @id @default(cuid())
+  name   String // Nome descritivo: "Integração Mobile App"
+  key    String @unique // A chave API em si (hash)
+  prefix String // Primeiros caracteres para identificação (ex: "sk_test_abc...")
+
+  permissions Json? // Permissões específicas da key
+
+  lastUsedAt DateTime?
+  expiresAt  DateTime? // Opcional: data de expiração
+
+  active Boolean @default(true)
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, active])
+  @@index([key])
+}
+
+// Webhooks para notificações
+model Webhook {
+  id     String   @id @default(cuid())
+  name   String // Nome descritivo
+  url    String // URL do webhook
+  events String[] // ["booking.created", "booking.updated", "equipment.created"]
+
+  secret String? // Secret para validar requests
+
+  active Boolean @default(true)
+
+  lastTriggeredAt DateTime?
+  failureCount    Int       @default(0)
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, active])
+}
+
+// Custos do Equipamento (manutenção, seguro, combustível, etc)
+model EquipmentCost {
+  id          String   @id @default(cuid())
+  type        CostType
+  description String
+  amount      Float
+  date        DateTime
+  recurring   Boolean  @default(false)
+
+  equipmentId String
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([equipmentId, date])
+  @@index([tenantId, type])
+}
+
+enum CostType {
+  PURCHASE // Compra inicial
+  MAINTENANCE // Manutenção
+  INSURANCE // Seguro
+  FUEL // Combustível
+  REPAIR // Reparo
+  DEPRECIATION // Depreciação
+  OTHER // Outros
+}
+
+// Documentos anexados ao Equipamento (manuais, garantias, etc)
+model EquipmentDocument {
+  id       String  @id @default(cuid())
+  name     String
+  type     DocType
+  url      String
+  fileSize Int?
+
+  equipmentId String
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  uploadedAt DateTime @default(now())
+
+  @@index([equipmentId])
+}
+
+enum DocType {
+  MANUAL // Manual do equipamento
+  WARRANTY // Garantia
+  CERTIFICATE // Certificado
+  INVOICE // Nota fiscal de compra
+  OTHER // Outros
+}
+
+// Documentos gerados para Reservas (contrato, recibo, nota)
+model BookingDocument {
+  id          String         @id @default(cuid())
+  type        BookingDocType
+  url         String
+  generatedAt DateTime       @default(now())
+  sentAt      DateTime?
+  sentTo      String?
+
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+}
+
+enum BookingDocType {
+  CONTRACT // Contrato de locação
+  RECEIPT // Recibo
+  INVOICE // Nota fiscal
+}
+
+// ============================================
+// GESTÃO DE ESTOQUE
+// ============================================
+
+// Item de uma Reserva (suporta múltiplos equipamentos por reserva)
+model BookingItem {
+  id String @id @default(cuid())
+
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  equipmentId String
+  equipment   Equipment @relation(fields: [equipmentId], references: [id])
+
+  quantity   Int   @default(1) // Quantidade reservada
+  unitPrice  Float // Preço unitário no momento da reserva
+  totalPrice Float // quantity * unitPrice * dias
+
+  // Controle de devolução
+  deliveredQty Int @default(0) // Quantidade entregue
+  returnedQty  Int @default(0) // Quantidade devolvida OK
+  damagedQty   Int @default(0) // Quantidade devolvida com avaria
+
+  notes String? @db.Text
+
+  // Unidades específicas vinculadas a este item
+  units BookingItemUnit[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([bookingId, equipmentId])
+  @@index([equipmentId])
+  @@index([bookingId])
+}
+
+// Movimentação de Estoque (histórico/auditoria)
+model StockMovement {
+  id   String       @id @default(cuid())
+  type MovementType
+
+  quantity      Int // Quantidade movimentada (sempre positivo)
+  previousStock Int // Estoque antes da movimentação
+  newStock      Int // Estoque após a movimentação
+
+  reason String? @db.Text // Motivo/observação
+
+  equipmentId String
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  // Referência opcional à reserva (para movimentos de locação)
+  bookingId String?
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  // Usuário que realizou a movimentação
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([equipmentId, createdAt])
+  @@index([tenantId, createdAt])
+  @@index([bookingId])
+  @@index([type])
+}
+
+enum MovementType {
+  PURCHASE // Compra/Entrada de estoque
+  RENTAL_OUT // Saída para locação
+  RENTAL_RETURN // Retorno de locação
+  ADJUSTMENT // Ajuste manual de inventário
+  DAMAGE // Registro de avaria
+  LOSS // Perda/Extravio
+  MAINTENANCE_OUT // Enviado para manutenção
+  MAINTENANCE_IN // Retorno de manutenção
+}
+
+// ============================================
+// INTEGRAÇÃO FISCAL - NFS-e (Focus NFe)
+// ============================================
+
+// Configuração Fiscal do Tenant
+model TenantFiscalConfig {
+  id String @id @default(cuid())
+
+  tenantId String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Credenciais Focus NFe (criptografadas)
+  focusNfeToken       String? @db.Text
+  focusNfeEnvironment String  @default("HOMOLOGACAO") // HOMOLOGACAO ou PRODUCAO
+
+  // Configuração NFS-e
+  nfseSerie         String @default("1")
+  nfseProximoNumero Int    @default(1)
+
+  // Padrões do serviço
+  codigoServico String? // Código LC 116
+  aliquotaIss   Float   @default(0)
+  issRetido     Boolean @default(false)
+
+  // Template de descrição do serviço (suporta variáveis)
+  descricaoTemplate String? @db.Text
+  // Variáveis: {bookingNumber}, {startDate}, {endDate}, {totalDays}, {customerName}, {itemsList}, {totalPrice}
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+// NFS-e (Nota Fiscal de Serviço Eletrônica)
+model Invoice {
+  id          String @id @default(cuid())
+  internalRef String @unique // Referência interna enviada ao Focus NFe
+
+  // Dados da NFS-e (retornados pela prefeitura)
+  numero            String? // Número da NFS-e
+  serie             String?
+  codigoVerificacao String? // Código de verificação da prefeitura
+
+  // Status
+  status         String  @default("PENDING") // PENDING, PROCESSING, AUTHORIZED, REJECTED, CANCELLED, ERROR
+  focusNfeStatus String? // Status retornado pelo Focus NFe
+
+  // URLs dos documentos
+  xmlUrl String?
+  pdfUrl String?
+
+  // Valores (snapshot para auditoria)
+  valorServicos    Float
+  valorTotal       Float
+  aliquotaIss      Float?
+  valorIss         Float?
+  issRetido        Boolean @default(false)
+  descricaoServico String  @db.Text
+  codigoServico    String?
+
+  // Dados do tomador (snapshot)
+  tomadorNome     String
+  tomadorCpfCnpj  String?
+  tomadorEmail    String?
+  tomadorEndereco Json? // { logradouro, numero, complemento, bairro, cidade, uf, cep }
+
+  // Relacionamentos
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Erros e retry
+  errorCode    String?
+  errorMessage String? @db.Text
+  retryCount   Int     @default(0)
+
+  // Cancelamento
+  cancelledAt        DateTime?
+  cancellationReason String?   @db.Text
+
+  // Timestamps
+  emittedAt        DateTime? // Quando foi autorizada pela prefeitura
+  sentToCustomerAt DateTime? // Quando foi enviada por email ao cliente
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([tenantId, status])
+  @@index([bookingId])
+  @@index([internalRef])
+  @@index([tenantId, createdAt])
+}
+
+// ============================================
+// SISTEMA DE ASSINATURAS SaaS
+// ============================================
+
+// Planos de assinatura (gerenciados pelo SUPER_ADMIN)
+model Plan {
+  id          String  @id @default(cuid())
+  name        String  @unique // "Básico", "Pro", "Enterprise"
+  slug        String  @unique // "basico", "pro", "enterprise"
+  description String? @db.Text
+
+  // Preço
+  monthlyPrice Float // Valor mensal
+  annualPrice  Float? // Valor anual (com desconto opcional)
+
+  // Limites do plano
+  maxUsers            Int @default(1)
+  maxEquipments       Int @default(10)
+  maxBookingsPerMonth Int @default(50)
+  storageGb           Int @default(1)
+
+  // Features habilitadas
+  nfseEnabled          Boolean @default(false)
+  stockEnabled         Boolean @default(true)
+  financialEnabled     Boolean @default(false)
+  reportsEnabled       Boolean @default(false)
+  apiEnabled           Boolean @default(false)
+  webhooksEnabled      Boolean @default(false)
+  multiUserEnabled     Boolean @default(false)
+  customDomainsEnabled Boolean @default(false)
+  whatsappEnabled      Boolean @default(false)
+
+  // Controle
+  active    Boolean @default(true)
+  featured  Boolean @default(false) // Destaque no marketing
+  sortOrder Int     @default(0)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relações
+  subscriptions Subscription[]
+
+  @@index([active, sortOrder])
+}
+
+// Assinatura de um Tenant
+model Subscription {
+  id String @id @default(cuid())
+
+  // Relacionamentos
+  tenantId String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  planId String
+  plan   Plan   @relation(fields: [planId], references: [id])
+
+  // Status da assinatura
+  status SubscriptionStatus @default(TRIAL)
+
+  // Datas importantes
+  startDate          DateTime  @default(now())
+  trialEndsAt        DateTime? // Fim do período de trial
+  currentPeriodStart DateTime  @default(now())
+  currentPeriodEnd   DateTime
+  canceledAt         DateTime?
+  cancelReason       String?   @db.Text
+
+  // Billing
+  billingCycle    BillingCycle @default(MONTHLY)
+  nextBillingDate DateTime
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relações
+  payments SubscriptionPayment[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([nextBillingDate])
+}
+
+enum SubscriptionStatus {
+  TRIAL // Período de teste
+  ACTIVE // Ativa e paga
+  PAST_DUE // Pagamento atrasado
+  CANCELED // Cancelada
+  SUSPENDED // Suspensa (falta de pagamento)
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
+// Pagamentos das assinaturas (cobranças mensais)
+model SubscriptionPayment {
+  id String @id @default(cuid())
+
+  // Relacionamentos
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  // Dados da cobrança no Asaas
+  asaasPaymentId   String? @unique // ID da cobrança no Asaas
+  asaasInvoiceUrl  String?
+  asaasBankSlipUrl String?
+
+  // Informações do pagamento
+  amount      Float
+  billingType String        @default("BOLETO") // BOLETO, PIX, CREDIT_CARD
+  status      PaymentStatus @default(PENDING)
+
+  // Período que este pagamento cobre
+  periodStart DateTime
+  periodEnd   DateTime
+  dueDate     DateTime
+
+  // Datas de pagamento
+  paidAt      DateTime?
+  attemptedAt DateTime? // Última tentativa de cobrança
+
+  // Controle de retries
+  retryCount Int @default(0)
+  maxRetries Int @default(3)
+
+  // Webhook
+  webhookReceivedAt DateTime?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([subscriptionId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([asaasPaymentId])
+}
+
+enum PaymentStatus {
+  PENDING // Aguardando pagamento
+  PROCESSING // Processando
+  PAID // Pago
+  OVERDUE // Vencido
+  FAILED // Falhou
+  REFUNDED // Estornado
+}
+
+// ============================================
+// UNIDADES INDIVIDUAIS DE EQUIPAMENTOS (Serial Numbers)
+// ============================================
+
+// Unidade física de um equipamento (cada item com número de série)
+model EquipmentUnit {
+  id String @id @default(cuid())
+
+  equipmentId String
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  serialNumber String // Número de série único
+  internalCode String? // Código interno da empresa
+  status       UnitStatus @default(AVAILABLE)
+
+  // Dados de aquisição
+  acquisitionDate DateTime?
+  acquisitionCost Float?
+  warrantyExpiry  DateTime?
+
+  notes String? @db.Text
+
+  // Relacionamentos
+  maintenances UnitMaintenance[]
+  documents    UnitDocument[]
+  bookingUnits BookingItemUnit[]
+
+  tenantId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, serialNumber])
+  @@index([equipmentId])
+  @@index([tenantId, status])
+}
+
+enum UnitStatus {
+  AVAILABLE // Disponível para locação
+  RENTED // Alugado/Em uso
+  MAINTENANCE // Em manutenção
+  DAMAGED // Danificado
+  RETIRED // Aposentado/Descartado
+}
+
+// Documento anexado a uma unidade específica
+model UnitDocument {
+  id       String  @id @default(cuid())
+  name     String
+  type     DocType
+  url      String
+  fileSize Int?
+
+  unitId String
+  unit   EquipmentUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  uploadedAt DateTime @default(now())
+
+  @@index([unitId])
+}
+
+// Vinculação entre BookingItem e unidades específicas
+model BookingItemUnit {
+  id String @id @default(cuid())
+
+  bookingItemId String
+  bookingItem   BookingItem @relation(fields: [bookingItemId], references: [id], onDelete: Cascade)
+
+  unitId String
+  unit   EquipmentUnit @relation(fields: [unitId], references: [id])
+
+  deliveredAt DateTime? // Quando foi entregue
+  returnedAt  DateTime? // Quando foi devolvido
+  condition   String? // Condição na devolução
+
+  @@unique([bookingItemId, unitId])
+  @@index([unitId])
+}
+
+// ============================================
+// SISTEMA DE MANUTENÇÃO
+// ============================================
+
+// Registro de manutenção de uma unidade
+model UnitMaintenance {
+  id String @id @default(cuid())
+
+  unitId String
+  unit   EquipmentUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  type          MaintenanceType
+  description   String            @db.Text
+  scheduledDate DateTime // Data programada
+  completedDate DateTime? // Data de conclusão
+  cost          Float? // Custo da manutenção
+  vendor        String? // Fornecedor/técnico
+  notes         String?           @db.Text
+  status        MaintenanceStatus @default(SCHEDULED)
+
+  notificationSent Boolean @default(false)
+
+  tenantId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([unitId])
+  @@index([scheduledDate])
+  @@index([status])
+  @@index([tenantId, status])
+}
+
+enum MaintenanceType {
+  PREVENTIVE // Manutenção preventiva programada
+  CORRECTIVE // Manutenção corretiva (quebrou)
+  INSPECTION // Inspeção/vistoria
+}
+
+enum MaintenanceStatus {
+  SCHEDULED // Agendada
+  IN_PROGRESS // Em andamento
+  COMPLETED // Concluída
+  CANCELLED // Cancelada
+}
+
+// Template de manutenção preventiva por tipo de equipamento
+model MaintenanceSchedule {
+  id String @id @default(cuid())
+
+  equipmentId String // Aplica a este tipo de equipamento
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  intervalDays Int // A cada X dias
+  description  String // Descrição da manutenção
+
+  tenantId  String
+  createdAt DateTime @default(now())
+
+  @@unique([equipmentId, intervalDays])
+  @@index([tenantId])
+}
+
+// ============================================
+// SISTEMA DE TRANSAÇÕES FINANCEIRAS
+// ============================================
+
+// Tipo de transação
+enum TransactionType {
+  INCOME // Receita/Ganho
+  EXPENSE // Despesa
+}
+
+// Status da transação
+enum TransactionStatus {
+  PENDING // Pendente
+  PAID // Pago/Recebido
+  OVERDUE // Vencido
+  CANCELLED // Cancelado
+}
+
+// Status da recorrência
+enum RecurrenceStatus {
+  ACTIVE // Ativa
+  PAUSED // Pausada temporariamente
+  CANCELLED // Cancelada
+  COMPLETED // Finalizada (chegou ao endDate)
+}
+
+// Categorias customizáveis de transações
+model TransactionCategory {
+  id        String          @id @default(cuid())
+  name      String
+  type      TransactionType
+  color     String? // Cor para UI (ex: "#10b981")
+  icon      String? // Nome do ícone Lucide (ex: "building")
+  isDefault Boolean         @default(false) // Categorias padrão do sistema
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  transactions          FinancialTransaction[]
+  recurringTransactions RecurringTransaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, name, type])
+  @@index([tenantId, type])
+}
+
+// Transações financeiras (gerais ou vinculadas a equipamento)
+model FinancialTransaction {
+  id String @id @default(cuid())
+
+  type        TransactionType
+  description String
+  amount      Float
+  date        DateTime // Data da transação
+  dueDate     DateTime? // Data de vencimento
+
+  status TransactionStatus @default(PENDING)
+  paidAt DateTime?
+
+  // Categoria
+  categoryId String
+  category   TransactionCategory @relation(fields: [categoryId], references: [id])
+
+  // Opcional: vinculado a equipamento
+  equipmentId String?
+  equipment   Equipment? @relation(fields: [equipmentId], references: [id], onDelete: SetNull)
+
+  // Recorrência
+  isRecurring  Boolean               @default(false)
+  recurrenceId String?
+  recurrence   RecurringTransaction? @relation(fields: [recurrenceId], references: [id], onDelete: SetNull)
+
+  // Tenant
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, date])
+  @@index([tenantId, status])
+  @@index([tenantId, type])
+  @@index([categoryId])
+  @@index([recurrenceId])
+}
+
+// Template de transações recorrentes
+model RecurringTransaction {
+  id String @id @default(cuid())
+
+  type        TransactionType
+  description String
+  amount      Float
+
+  // Categoria
+  categoryId String
+  category   TransactionCategory @relation(fields: [categoryId], references: [id])
+
+  // Opcional: vinculado a equipamento
+  equipmentId String?
+  equipment   Equipment? @relation(fields: [equipmentId], references: [id], onDelete: SetNull)
+
+  // Configuração de recorrência
+  intervalDays Int // Período em dias (7=semanal, 30=mensal, 365=anual)
+  startDate    DateTime // Data de início
+  endDate      DateTime? // Data de término (null = sem fim)
+  nextDueDate  DateTime // Próxima data prevista
+
+  // Status da recorrência
+  status RecurrenceStatus @default(ACTIVE)
+
+  // Transações geradas a partir deste template
+  transactions FinancialTransaction[]
+
+  // Tenant
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, status])
+  @@index([tenantId, nextDueDate])
+}
+
+// ============================================
+// MÓDULO COMERCIAL (CRM)
+// ============================================
+
+// Lead / Oportunidade de Venda
+model Lead {
+  id String @id @default(cuid())
+
+  // Dados do Prospect
+  name     String
+  company  String?
+  email    String?
+  phone    String?
+  whatsapp String?
+  address  String?
+  city     String?
+  state    String?
+
+  // Classificação
+  status      LeadStatus  @default(NEW)
+  source      LeadSource  @default(DIRECT)
+  contactType ContactType @default(PRESENCIAL)
+
+  // Valores
+  expectedValue Float?
+
+  // Interesse
+  interestNotes String? @db.Text
+
+  // Tracking
+  nextAction     String?
+  nextActionDate DateTime?
+  lostReason     String?
+
+  // Resultado
+  wonAt               DateTime?
+  lostAt              DateTime?
+  convertedCustomerId String?
+
+  // Relacionamentos
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  assignedToId String?
+  assignedTo   User?   @relation(fields: [assignedToId], references: [id])
+
+  activities         LeadActivity[]
+  equipmentInterests LeadEquipmentInterest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+}
+
+// Atividade/Histórico de contato com Lead
+model LeadActivity {
+  id String @id @default(cuid())
+
+  type        ActivityType
+  description String       @db.Text
+  photos      String[]
+
+  scheduledAt DateTime?
+  completedAt DateTime?
+
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  tenantId String
+
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+  @@index([tenantId, createdAt])
+}
+
+// Interesse em equipamentos específicos
+model LeadEquipmentInterest {
+  id String @id @default(cuid())
+
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  equipmentId String
+  equipment   Equipment @relation(fields: [equipmentId], references: [id])
+
+  quantity Int     @default(1)
+  notes    String?
+
+  @@unique([leadId, equipmentId])
+  @@index([equipmentId])
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  WON
+  LOST
+}
+
+enum LeadSource {
+  DIRECT
+  REFERRAL
+  WEBSITE
+  COLD_CALL
+  SOCIAL_MEDIA
+  EVENT
+  OTHER
+}
+
+enum ContactType {
+  PRESENCIAL
+  ONLINE
+}
+
+enum ActivityType {
+  VISIT
+  CALL
+  WHATSAPP
+  EMAIL
+  MEETING
+  PROPOSAL
+  OTHER
+}

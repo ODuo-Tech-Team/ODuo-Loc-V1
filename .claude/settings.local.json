@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(vercel:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(set \"DATABASE_URL=postgres://e7de62df5ba694619c6a580ce2e4bfe91cb7a2524a70162b3ed64930feec201b:sk_0N3b5968pbG2JQ0alTn-m@db.prisma.io:5432/postgres?sslmode=require\")",
+      "Bash(npx prisma db push)",
+      "Bash(DATABASE_URL=\"postgres://e7de62df5ba694619c6a580ce2e4bfe91cb7a2524a70162b3ed64930feec201b:sk_0N3b5968pbG2JQ0alTn-m@db.prisma.io:5432/postgres?sslmode=require\" npx prisma db push:*)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx prisma generate:*)",
+      "Bash(export DATABASE_URL=\"postgres://e7de62df5ba694619c6a580ce2e4bfe91cb7a2524a70162b3ed64930feec201b:sk_0N3b5968pbG2JQ0alTn-m@db.prisma.io:5432/postgres?sslmode=require\")",
+      "Bash(npx ts-node:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: adicionar fallback ReceitaWS para consulta de CNPJ\n\n- BrasilAPI como primária, ReceitaWS como fallback\n- Logs detalhados para debug de erros\n- User-Agent atualizado para evitar bloqueios\n- Tratamento de código ALL_APIS_FAILED\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(npx dotenv:*)",
+      "Bash(npx prisma db push:*)",
+      "Bash(powershell:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

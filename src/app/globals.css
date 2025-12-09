@@ -1,0 +1,362 @@
+@import "tailwindcss";
+
+@theme {
+  /* Color Palette */
+  --color-background: #04132A;
+  /* Deep Navy Blue */
+  --color-foreground: #ffffff;
+  /* White */
+
+  --color-card: rgba(49, 122, 224, 0.1);
+  /* Primary with opacity */
+  --color-card-foreground: #ffffff;
+
+  --color-popover: #0a1e3d;
+  --color-popover-foreground: #ffffff;
+
+  --color-primary: #317AE0;
+  /* Bright Blue */
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary: #195AB4;
+  /* Deep Blue */
+  --color-secondary-foreground: #ffffff;
+
+  --color-muted: #0a1e3d;
+  --color-muted-foreground: #94a3b8;
+
+  --color-accent: #06b6d4;
+  /* Cyan - replacing purple */
+  --color-accent-foreground: #ffffff;
+
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+
+  --color-border: rgba(49, 122, 224, 0.2);
+  --color-input: rgba(49, 122, 224, 0.2);
+  --color-ring: #317AE0;
+
+  --radius-lg: 0.75rem;
+  --radius-md: 0.5rem;
+  --radius-sm: 0.25rem;
+
+  /* Typography */
+  --font-sans: "Open Sans", sans-serif;
+  --font-headline: "Poppins", sans-serif;
+  --font-body: "Montserrat", sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-body);
+    background-image:
+      radial-gradient(circle at 50% -20%, rgba(49, 122, 224, 0.15) 0%, transparent 60%),
+      radial-gradient(circle at 0% 0%, rgba(25, 90, 180, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 100% 100%, rgba(6, 182, 212, 0.08) 0%, transparent 50%);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-headline);
+    font-weight: 600;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/5 backdrop-blur-md border border-white/10;
+  }
+
+  .glass-card {
+    @apply bg-[#04132A]/80 backdrop-blur-xl border border-[#317AE0]/20 shadow-2xl;
+  }
+
+  .glass-button {
+    @apply bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/10 transition-all duration-300;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#317AE0] via-[#06b6d4] to-[#195AB4];
+  }
+
+  .text-gradient-alt {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-[#317AE0] to-[#06b6d4];
+  }
+
+  .glow {
+    box-shadow: 0 0 20px -5px #317AE0;
+  }
+
+  .glow-strong {
+    box-shadow: 0 0 30px -5px #317AE0, 0 0 60px -10px #06b6d4;
+  }
+
+  .bg-primary-gradient {
+    background: linear-gradient(135deg, #317AE0 0%, #195AB4 100%);
+  }
+
+  .bg-secondary-gradient {
+    background: linear-gradient(135deg, #195AB4 0%, #04132A 100%);
+  }
+
+  .bg-accent-gradient {
+    background: linear-gradient(135deg, #06b6d4 0%, #317AE0 100%);
+  }
+
+  .border-gradient {
+    border-image: linear-gradient(135deg, #317AE0, #06b6d4) 1;
+  }
+
+  /* Custom Scrollbar Styles */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(49, 122, 224, 0.3) transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 10px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(49, 122, 224, 0.4) 0%, rgba(6, 182, 212, 0.3) 100%);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(49, 122, 224, 0.6) 0%, rgba(6, 182, 212, 0.5) 100%);
+  }
+
+  /* Sidebar specific scrollbar */
+  .sidebar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 8px 0;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    transition: background 0.2s ease;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb:active {
+    background: rgba(49, 122, 224, 0.5);
+  }
+
+}
+
+/* ===========================================
+   Driver.js Onboarding Tour Styles
+   =========================================== */
+
+/* NOTA: driver.js v1.4.0 NÃO adiciona classe .driver-active-element
+   Os estilos de destaque são aplicados via JavaScript em onHighlightStarted */
+
+/* Forçar overflow visible nos containers durante o tour para não cortar o destaque */
+html.driver-active [data-tour="sidebar"],
+html.driver-active [data-tour="sidebar"] > div {
+  overflow: visible !important;
+}
+
+/* Garantir que o outline/box-shadow não seja cortado pelo sidebar */
+html.driver-active .sidebar-scroll {
+  overflow: visible !important;
+}
+
+/* Forçar overflow visible no header durante o tour */
+html.driver-active header,
+html.driver-active header > div,
+html.driver-active [data-tour="notifications"],
+html.driver-active [data-tour="user-menu"] {
+  overflow: visible !important;
+}
+
+/* Garantir que elementos destacados no header fiquem acima */
+html.driver-active [data-tour="notifications"],
+html.driver-active [data-tour="user-menu"] {
+  position: relative !important;
+  z-index: 100001 !important;
+}
+
+/* Popover principal */
+.driver-popover {
+  background: #0a1e3d !important;
+  border: 2px solid #317AE0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 30px rgba(49, 122, 224, 0.4) !important;
+  padding: 20px !important;
+  max-width: 340px !important;
+  min-width: 280px !important;
+  font-family: "Montserrat", sans-serif !important;
+  color: #ffffff !important;
+}
+
+/* Título */
+.driver-popover-title {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: 1.1rem !important;
+  font-family: "Poppins", sans-serif !important;
+  margin: 0 0 10px 0 !important;
+  padding: 0 !important;
+  line-height: 1.4 !important;
+}
+
+/* Descrição */
+.driver-popover-description {
+  color: #b8c5d6 !important;
+  font-size: 0.9rem !important;
+  line-height: 1.6 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Footer com progresso e botões */
+.driver-popover-footer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  border-top: 1px solid rgba(49, 122, 224, 0.3) !important;
+  margin-top: 16px !important;
+  padding-top: 16px !important;
+  gap: 12px !important;
+}
+
+/* Texto de progresso */
+.driver-popover-progress-text {
+  color: #7a8fa6 !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  background: rgba(49, 122, 224, 0.15) !important;
+  padding: 6px 12px !important;
+  border-radius: 20px !important;
+  white-space: nowrap !important;
+}
+
+/* Container dos botões */
+.driver-popover-navigation-btns {
+  display: flex !important;
+  gap: 8px !important;
+  margin-left: auto !important;
+}
+
+/* Botões - RESETAR COMPLETAMENTE para evitar texto duplicado */
+.driver-popover-prev-btn,
+.driver-popover-next-btn {
+  all: revert !important;
+  display: inline-block !important;
+  cursor: pointer !important;
+  font-family: "Montserrat", sans-serif !important;
+  border-radius: 8px !important;
+  padding: 10px 20px !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+  text-align: center !important;
+  line-height: 1 !important;
+  -webkit-font-smoothing: antialiased !important;
+}
+
+/* Botão anterior */
+.driver-popover-prev-btn {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
+}
+
+.driver-popover-prev-btn:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Botão próximo/finalizar */
+.driver-popover-next-btn {
+  background: #317AE0 !important;
+  border: none !important;
+  color: #ffffff !important;
+}
+
+.driver-popover-next-btn:hover {
+  background: #4a90ed !important;
+}
+
+/* Botão fechar */
+.driver-popover-close-btn {
+  position: absolute !important;
+  top: 12px !important;
+  right: 12px !important;
+  color: #64748b !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+  z-index: 1 !important;
+  pointer-events: auto !important;
+  padding: 4px !important;
+  width: 28px !important;
+  height: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 4px !important;
+  transition: background-color 0.2s !important;
+}
+
+.driver-popover-close-btn:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Seta do popover */
+.driver-popover-arrow {
+  background: #0a1e3d !important;
+  border: 2px solid #317AE0 !important;
+}
+
+.driver-popover-arrow-side-left {
+  border-right: none !important;
+  border-top: none !important;
+}
+
+.driver-popover-arrow-side-right {
+  border-left: none !important;
+  border-bottom: none !important;
+}
+
+.driver-popover-arrow-side-top {
+  border-bottom: none !important;
+  border-right: none !important;
+}
+
+.driver-popover-arrow-side-bottom {
+  border-top: none !important;
+  border-left: none !important;
+}
+
