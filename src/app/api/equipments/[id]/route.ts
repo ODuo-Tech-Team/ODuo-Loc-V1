@@ -267,11 +267,38 @@ export async function DELETE(
     if (equipment._count.bookings > 0) {
       dependencies.push(`${equipment._count.bookings} reserva(s)`)
     }
-    if (equipment._count.bookingItems > 0) {
-      dependencies.push(`${equipment._count.bookingItems} item(ns) em reservas`)
-    }
     if (equipment._count.leadInterests > 0) {
       dependencies.push(`${equipment._count.leadInterests} lead(s) interessado(s)`)
+    }
+
+    // Buscar BookingItems para verificar quais têm bookings válidos
+    const bookingItems = await prisma.bookingItem.findMany({
+      where: { equipmentId: id },
+      select: {
+        id: true,
+        bookingId: true,
+        booking: {
+          select: { id: true }
+        }
+      }
+    })
+
+    // Separar órfãos (booking foi deletado) de ativos (booking ainda existe)
+    const orphanedItems = bookingItems.filter(item => !item.booking)
+    const activeItems = bookingItems.filter(item => item.booking)
+
+    // Limpar BookingItems órfãos antes de verificar dependências
+    if (orphanedItems.length > 0) {
+      await prisma.bookingItem.deleteMany({
+        where: {
+          id: { in: orphanedItems.map(item => item.id) }
+        }
+      })
+      console.log(`[Equipment DELETE] Limpou ${orphanedItems.length} BookingItems órfãos do equipamento ${id}`)
+    }
+
+    if (activeItems.length > 0) {
+      dependencies.push(`${activeItems.length} item(ns) em reservas ativas`)
     }
 
     if (dependencies.length > 0) {
@@ -282,7 +309,7 @@ export async function DELETE(
           suggestion: "INATIVAR",
           dependencies: {
             bookings: equipment._count.bookings,
-            bookingItems: equipment._count.bookingItems,
+            bookingItems: activeItems.length,
             leadInterests: equipment._count.leadInterests,
           }
         },
