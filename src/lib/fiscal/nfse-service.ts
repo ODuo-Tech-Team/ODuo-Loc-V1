@@ -623,6 +623,18 @@ export class NfseService {
         // Sistema Municipal (LC 116/2003) - formato "XX.XX"
         payload.servico.item_lista_servico = code
         console.log(`[NFS-e] Sistema MUNICIPAL - item_lista_servico: ${code}`)
+
+        // CAXIAS DO SUL: Requer também o código tributário do município (campo cServ no XML)
+        // Município usa sistema INFISC que precisa de:
+        // - item_lista_servico (cLCServ) = código LC 116/2003
+        // - codigo_tributario_municipio (cServ) = código específico do município
+        if (tenant.codigoMunicipio === '4305108') {
+          // Para Caxias do Sul, usar o mesmo código da LC 116 no campo cServ
+          // Formato: 4 dígitos (ex: 1401 para 14.01)
+          const codigoMunicipal = code.substring(0, 4)
+          payload.servico.codigo_tributario_municipio = codigoMunicipal
+          console.log(`[NFS-e] Caxias do Sul - codigo_tributario_municipio: ${codigoMunicipal}`)
+        }
       }
     } else {
       console.warn('[NFS-e] ⚠️  Código de serviço não configurado')
