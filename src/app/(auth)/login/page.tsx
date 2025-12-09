@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import Link from "next/link"
-import { Sparkles } from "lucide-react"
+import { Sparkles, Eye, EyeOff } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -65,6 +65,7 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [tenantSlug, setTenantSlug] = useState<string | null>(null)
   const [checkingSession, setCheckingSession] = useState(true)
+  const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
     setTenantSlug(getTenantSlug())
@@ -198,14 +199,29 @@ function LoginForm() {
                 Esqueceu a senha?
               </Link>
             </div>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              disabled={isLoading}
-              className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-primary/50 focus:ring-primary/20"
-              {...register("password")}
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                disabled={isLoading}
+                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-primary/50 focus:ring-primary/20 pr-10"
+                {...register("password")}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300 transition-colors"
+                disabled={isLoading}
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
             {errors.password && (
               <p className="text-sm text-red-400">{errors.password.message}</p>
             )}
