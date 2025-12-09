@@ -451,6 +451,67 @@ export class NfseService {
     return ordenado
   }
 
+  /**
+   * Mapeia o regime tributário do tenant para o código numérico do Focus NFe
+   *
+   * Códigos Focus NFe:
+   * 1 = Microempresa Municipal
+   * 2 = Estimativa
+   * 3 = Sociedade de Profissionais
+   * 4 = Cooperativa
+   * 5 = MEI (Microempreendedor Individual)
+   * 6 = ME/EPP (Microempresa e Empresa de Pequeno Porte - Simples Nacional)
+   */
+  private getRegimeEspecialTributacao(regimeTributario: string | null | undefined): number {
+    console.log('[NFS-e] Regime tributário do tenant:', regimeTributario)
+
+    switch (regimeTributario) {
+      case 'MEI':
+        console.log('[NFS-e] → Código Focus NFe: 5 (MEI)')
+        return 5
+      case 'SIMPLES_NACIONAL':
+        console.log('[NFS-e] → Código Focus NFe: 6 (ME/EPP - Simples Nacional)')
+        return 6
+      case 'LUCRO_PRESUMIDO':
+        console.log('[NFS-e] → Código Focus NFe: 2 (Estimativa)')
+        return 2
+      case 'LUCRO_REAL':
+        console.log('[NFS-e] → Código Focus NFe: 2 (Estimativa)')
+        return 2
+      default:
+        console.log('[NFS-e] → Código Focus NFe: 6 (ME/EPP - padrão)')
+        return 6 // Default: ME/EPP
+    }
+  }
+
+  /**
+   * Mapeia o regime tributário para código de opção do Simples Nacional (NFS-e Nacional)
+   *
+   * Códigos NFS-e Nacional:
+   * 1 = Microempreendedor Individual (MEI)
+   * 2 = Estimativa
+   * 3 = Sociedade de profissionais
+   * 4 = Cooperativa
+   * 5 = Microempresa ou Empresa de Pequeno Porte (ME/EPP)
+   * 6 = Microempresário Individual e equiparados
+   */
+  private getCodigoOpcaoSimplesNacional(regimeTributario: string | null | undefined): number | undefined {
+    console.log('[NFS-e Nacional] Regime tributário do tenant:', regimeTributario)
+
+    switch (regimeTributario) {
+      case 'MEI':
+        console.log('[NFS-e Nacional] → Código Simples Nacional: 1 (MEI)')
+        return 1
+      case 'SIMPLES_NACIONAL':
+        console.log('[NFS-e Nacional] → Código Simples Nacional: 5 (ME/EPP)')
+        return 5
+      default:
+        // Para outros regimes (Lucro Presumido, Lucro Real), não enviar este campo
+        console.log('[NFS-e Nacional] → Regime não é Simples Nacional, campo não será enviado')
+        return undefined
+    }
+  }
+
   private buildNfsePayload(
     booking: NonNullable<Awaited<ReturnType<typeof this.getBookingData>>>,
     tenant: NonNullable<Awaited<ReturnType<typeof this.getTenantFiscalData>>>
@@ -531,8 +592,8 @@ export class NfseService {
     const payload: NfsePayload = {
       data_emissao: this.getCurrentDateTimeBrazil(),
       natureza_operacao: 1, // 1 = Tributação no município
-      optante_simples_nacional: true, // TODO: Adicionar campo na config fiscal
-      regime_especial_tributacao: 6, // 6 = Microempresa e Empresa de Pequeno Porte (ME/EPP)
+      optante_simples_nacional: tenant.regimeTributario === 'SIMPLES_NACIONAL' || tenant.regimeTributario === 'MEI',
+      regime_especial_tributacao: this.getRegimeEspecialTributacao(tenant.regimeTributario),
       prestador: {
         cnpj: onlyNumbers(tenant.cnpj!),
         inscricao_municipal: onlyNumbers(tenant.inscricaoMunicipal!),
@@ -547,6 +608,7 @@ export class NfseService {
         discriminacao,
         aliquota: tenant.fiscalConfig?.aliquotaIss || 0,
         iss_retido: issRetido,
+        valor_iss: booking.totalPrice * ((tenant.fiscalConfig?.aliquotaIss || 0) / 100),
       },
     }
 
@@ -747,8 +809,8 @@ export class NfseService {
       valor_servico: booking.totalPrice,
 
       // Simples Nacional
-      codigo_opcao_simples_nacional: 3, // 3 = ME/EPP
-      regime_especial_tributacao: 6, // 6 = Microempresa e Empresa de Pequeno Porte
+      codigo_opcao_simples_nacional: this.getCodigoOpcaoSimplesNacional(tenant.regimeTributario),
+      regime_especial_tributacao: this.getRegimeEspecialTributacao(tenant.regimeTributario),
 
       // Tributação
       tributacao_iss: 1, // 1 = Tributável
