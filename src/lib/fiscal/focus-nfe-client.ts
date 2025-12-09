@@ -132,6 +132,13 @@ export class FocusNfeClient {
     console.log(`[Focus NFe]   - codigoNacional: ${codigoNacional}`)
     console.log(`[Focus NFe] Usando endpoint: ${isNacional ? '/nfsen (Nacional)' : '/nfse (Municipal)'}`)
 
+    // Logs detalhados para debug de validação XML
+    console.log('[Focus NFe] ========== PAYLOAD SENDO ENVIADO ==========')
+    console.log('[Focus NFe] Payload completo:', JSON.stringify(payload, null, 2))
+    console.log('[Focus NFe] Ordem dos campos do tomador:', Object.keys((payload as any).tomador || {}))
+    console.log('[Focus NFe] Ordem dos campos do servico:', Object.keys((payload as any).servico || {}))
+    console.log('[Focus NFe] ===============================================')
+
     if (isNacional) {
       // Se payload já está em formato Nacional, usar direto. Senão, converter
       const payloadNacional = isPayloadNacionalDPS ? payload : this.convertToNacionalPayload(payload)

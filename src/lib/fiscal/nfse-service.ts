@@ -421,6 +421,36 @@ export class NfseService {
     return result
   }
 
+  /**
+   * Garante que o objeto tomador tem os campos na ordem correta para o XML Focus NFe
+   *
+   * Ordem obrigatória:
+   * 1. razao_social (xNome)
+   * 2. cpf ou cnpj (documento)
+   * 3. endereco (ender) - DEVE VIR ANTES DE EMAIL
+   * 4. email (xEmail)
+   * 5. telefone (xTelefone)
+   *
+   * JavaScript ES6+ garante a ordem de inserção das propriedades de objeto,
+   * e o Focus NFe usa essa ordem para gerar o XML. Ordem incorreta causa
+   * erro de validação de schema XML.
+   */
+  private ordenarCamposTomador(tomador: any): any {
+    const ordenado: any = {}
+
+    // Ordem correta para o XML Focus NFe
+    if (tomador.razao_social) ordenado.razao_social = tomador.razao_social
+    if (tomador.cpf) ordenado.cpf = tomador.cpf
+    if (tomador.cnpj) ordenado.cnpj = tomador.cnpj
+    if (tomador.endereco) ordenado.endereco = tomador.endereco
+    if (tomador.email) ordenado.email = tomador.email
+    if (tomador.telefone) ordenado.telefone = tomador.telefone
+
+    console.log('[NFS-e] ✅ Campos do tomador ordenados:', Object.keys(ordenado))
+
+    return ordenado
+  }
+
   private buildNfsePayload(
     booking: NonNullable<Awaited<ReturnType<typeof this.getBookingData>>>,
     tenant: NonNullable<Awaited<ReturnType<typeof this.getTenantFiscalData>>>
@@ -510,8 +540,7 @@ export class NfseService {
       },
       tomador: {
         razao_social: booking.customer.name,
-        email: booking.customer.email || undefined,
-        telefone: booking.customer.phone || undefined,
+        // Email e telefone serão adicionados após o endereço para manter ordem correta do XML
       },
       servico: {
         valor_servicos: booking.totalPrice,
@@ -562,6 +591,16 @@ export class NfseService {
       console.log('[NFS-e] ✅ Endereço do tomador adicionado:', payload.tomador.endereco)
     }
 
+    // Adicionar email e telefone APÓS o endereço (ordem correta para XML Focus NFe)
+    if (booking.customer.email) {
+      payload.tomador.email = booking.customer.email
+      console.log('[NFS-e] Email do tomador adicionado')
+    }
+    if (booking.customer.phone) {
+      payload.tomador.telefone = booking.customer.phone
+      console.log('[NFS-e] Telefone do tomador adicionado')
+    }
+
     // Adicionar código do serviço se configurado
     if (tenant.fiscalConfig?.codigoServico) {
       // Detectar se o município usa Sistema Nacional
@@ -598,6 +637,9 @@ export class NfseService {
       }
     })
     console.log('[NFS-e] ============================================')
+
+    // Garantir ordem correta dos campos do tomador antes de enviar
+    payload.tomador = this.ordenarCamposTomador(payload.tomador)
 
     return payload
   }
