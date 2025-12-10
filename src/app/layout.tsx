@@ -3,6 +3,7 @@ import { Open_Sans, Poppins, Montserrat } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
+import { Analytics } from "@vercel/analytics/next"
 
 const openSans = Open_Sans({
     subsets: ["latin"],
