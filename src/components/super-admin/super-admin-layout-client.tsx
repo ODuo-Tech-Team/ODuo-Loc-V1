@@ -19,6 +19,7 @@ import {
   Activity,
   CreditCard,
   DollarSign,
+  FileText,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -73,6 +74,12 @@ const routes = [
     icon: DollarSign,
     href: "/super-admin/billing",
     color: "text-pink-400",
+  },
+  {
+    label: "Blog",
+    icon: FileText,
+    href: "/super-admin/blog",
+    color: "text-cyan-400",
   },
   {
     label: "Configurações",
