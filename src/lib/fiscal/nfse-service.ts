@@ -705,11 +705,12 @@ export class NfseService {
 
         // CAXIAS DO SUL: Requer também o código tributário do município (campo cServ no XML)
         // Município usa sistema INFISC que precisa de:
-        // - item_lista_servico (cLCServ) = código LC 116/2003 com ponto (14.01)
+        // - item_lista_servico (cLCServ) = código LC 116/2003 em 4 dígitos (1401)
         // - codigo_tributario_municipio (cServ) = código específico do município (numérico: 1401)
+        // NOTA: O suporte Focus NFe informou que instruíram a API a ignorar esses campos e usar o cadastro
         if (tenant.codigoMunicipio === '4305108') {
           // Para Caxias do Sul, usar código numérico sem ponto no campo cServ
-          const codigoNumerico = code.replace(/\D/g, '') // Remove ponto: "14.01" -> "1401"
+          const codigoNumerico = code.replace(/\D/g, '') // Garante apenas números: "14.01" -> "1401" ou "1401" -> "1401"
           payload.servico.codigo_tributario_municipio = codigoNumerico
           console.log(`[NFS-e] Caxias do Sul - codigo_tributario_municipio: ${codigoNumerico}`)
         }
@@ -962,13 +963,14 @@ export class NfseService {
     // Municípios que usam formato de 4 dígitos (sem desdobro "00")
     // Esses municípios esperam o código no formato XXYY ao invés de XXYY00
     const municipios4Digitos: string[] = [
-      // Adicionar municípios conforme necessário
+      '4305108', // Caxias do Sul - RS (confirmado pelo suporte Focus NFe)
     ]
 
     // Municípios que usam formato com ponto (XX.YY)
     // Esses municípios esperam o código exatamente como "14.01" ao invés de "1401" ou "140100"
-    const municipiosComPonto = [
-      '4305108', // Caxias do Sul - RS
+    // NOTA: Caxias do Sul (4305108) foi testado - usar 4 dígitos SEM ponto (1401)
+    const municipiosComPonto: string[] = [
+      // Adicionar municípios conforme necessário
     ]
 
     // Remove espaços e extrai apenas números
