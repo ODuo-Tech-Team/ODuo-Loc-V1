@@ -141,7 +141,7 @@ export function FAQSchema() {
         name: "Quanto custa o sistema para locadora ODuoLoc?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "O ODuoLoc oferece 3 planos: Starter (R$ 997/mês) para quem está começando, Professional (R$ 1.497/mês) para empresas em crescimento e Enterprise (R$ 2.997/mês) para grandes operações. Todos incluem 14 dias de teste grátis.",
+          text: "O ODuoLoc oferece 3 planos: Starter (R$ 997/mês) para quem está começando, Professional (R$ 1.497/mês) para empresas em crescimento e Enterprise (R$ 2.997/mês) para grandes operações. Há também uma taxa única de implementação de R$ 2.000.",
         },
       },
       {

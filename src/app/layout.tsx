@@ -78,7 +78,7 @@ export const metadata: Metadata = {
         url: siteUrl,
         siteName: "ODuoLoc",
         title: "ODuoLoc - Sistema de Gestão para Locadoras de Equipamentos",
-        description: "A plataforma mais completa para locadoras. Gerencie reservas, estoque, clientes e financeiro. Experimente grátis por 14 dias.",
+        description: "A plataforma mais completa para locadoras. Gerencie reservas, estoque, clientes e financeiro.",
         images: [
             {
                 url: "/og-image.png",
