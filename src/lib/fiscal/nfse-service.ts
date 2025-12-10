@@ -946,9 +946,14 @@ export class NfseService {
 
     // Municípios que usam formato de 4 dígitos (sem desdobro "00")
     // Esses municípios esperam o código no formato XXYY ao invés de XXYY00
-    const municipios4Digitos = [
+    const municipios4Digitos: string[] = [
+      // Adicionar municípios conforme necessário
+    ]
+
+    // Municípios que usam formato com ponto (XX.YY)
+    // Esses municípios esperam o código exatamente como "14.01" ao invés de "1401" ou "140100"
+    const municipiosComPonto = [
       '4305108', // Caxias do Sul - RS
-      // Adicionar outros municípios conforme necessário
     ]
 
     // Remove espaços e extrai apenas números
@@ -959,6 +964,12 @@ export class NfseService {
     const usa4Digitos = codigoMunicipio && municipios4Digitos.includes(codigoMunicipio)
     if (usa4Digitos) {
       console.log(`[NFS-e] Município ${codigoMunicipio} usa formato de 4 dígitos para item_lista_servico`)
+    }
+
+    // Verifica se o município usa formato com ponto (XX.YY)
+    const usaComPonto = codigoMunicipio && municipiosComPonto.includes(codigoMunicipio)
+    if (usaComPonto) {
+      console.log(`[NFS-e] Município ${codigoMunicipio} usa formato com ponto (XX.YY) para item_lista_servico`)
     }
 
     // Se município força Nacional, verificar se precisa converter
@@ -990,10 +1001,22 @@ export class NfseService {
       return { isNacional: true, code: nacionalCode }
     }
 
+    // Função auxiliar para formatar código com ponto (XX.YY)
+    const formatComPonto = (digits: string): string => {
+      // Garante 4 dígitos
+      const d = digits.padStart(4, '0').substring(0, 4)
+      return `${d.substring(0, 2)}.${d.substring(2, 4)}`
+    }
+
     // Se tem formato XX.XX ou XXXX (4 dígitos), é Municipal LC 116/2003
     if (cleanCode.includes('.')) {
       // Formato XX.XX
-      if (usa4Digitos) {
+      if (usaComPonto) {
+        // Para municípios que usam formato com ponto, manter o ponto
+        // Ex: 14.01 -> 14.01
+        console.log(`[NFS-e] Código ${cleanCode} mantido no formato com ponto: ${cleanCode}`)
+        return { isNacional: false, code: cleanCode }
+      } else if (usa4Digitos) {
         // Para municípios que usam 4 dígitos, manter sem o desdobro "00"
         // Ex: 14.01 -> 1401
         console.log(`[NFS-e] Código ${cleanCode} convertido para formato Municipal 4 dígitos: ${numericOnly}`)
@@ -1006,7 +1029,13 @@ export class NfseService {
         return { isNacional: false, code: municipalCode }
       }
     } else if (numericOnly.length === 4) {
-      if (usa4Digitos) {
+      if (usaComPonto) {
+        // Para municípios que usam formato com ponto, adicionar o ponto
+        // Ex: 1401 -> 14.01
+        const codeComPonto = formatComPonto(numericOnly)
+        console.log(`[NFS-e] Código ${cleanCode} convertido para formato com ponto: ${codeComPonto}`)
+        return { isNacional: false, code: codeComPonto }
+      } else if (usa4Digitos) {
         // Para municípios que usam 4 dígitos, manter como está
         console.log(`[NFS-e] Código ${cleanCode} mantido em formato Municipal 4 dígitos: ${numericOnly}`)
         return { isNacional: false, code: numericOnly }
@@ -1018,7 +1047,13 @@ export class NfseService {
       }
     } else if (numericOnly.length === 6 && !numericOnly.startsWith('99')) {
       // 6 dígitos mas não começa com 99 - é Municipal (já no formato correto)
-      if (usa4Digitos) {
+      if (usaComPonto) {
+        // Para municípios que usam formato com ponto, converter de 6 dígitos para XX.YY
+        // Ex: 140100 -> 14.01
+        const codeComPonto = formatComPonto(numericOnly.substring(0, 4))
+        console.log(`[NFS-e] Código ${numericOnly} convertido para formato com ponto: ${codeComPonto}`)
+        return { isNacional: false, code: codeComPonto }
+      } else if (usa4Digitos) {
         // Para municípios que usam 4 dígitos, remover os últimos 2 dígitos (desdobro)
         const code4Digits = numericOnly.substring(0, 4)
         console.log(`[NFS-e] Código ${numericOnly} convertido para formato Municipal 4 dígitos: ${code4Digits}`)
