@@ -174,7 +174,8 @@ export class FocusNfeClient {
       cnpj_prestador: payload.prestador.cnpj,
       inscricao_municipal_prestador: payload.prestador.inscricao_municipal,
       codigo_opcao_simples_nacional: payload.optante_simples_nacional ? 1 : 2,
-      regime_especial_tributacao: payload.regime_especial_tributacao,
+      // Regime especial só é enviado se definido (MEI/Simples - não enviar para Lucro Presumido/Real)
+      ...(payload.regime_especial_tributacao !== undefined && { regime_especial_tributacao: payload.regime_especial_tributacao }),
 
       // Tomador
       cnpj_tomador: payload.tomador.cnpj,

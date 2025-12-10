@@ -462,7 +462,7 @@ export class NfseService {
    * 5 = MEI (Microempreendedor Individual)
    * 6 = ME/EPP (Microempresa e Empresa de Pequeno Porte - Simples Nacional)
    */
-  private getRegimeEspecialTributacao(regimeTributario: string | null | undefined): number {
+  private getRegimeEspecialTributacao(regimeTributario: string | null | undefined): number | undefined {
     console.log('[NFS-e] Regime tributário do tenant:', regimeTributario)
 
     switch (regimeTributario) {
@@ -473,14 +473,19 @@ export class NfseService {
         console.log('[NFS-e] → Código Focus NFe: 6 (ME/EPP - Simples Nacional)')
         return 6
       case 'LUCRO_PRESUMIDO':
-        console.log('[NFS-e] → Código Focus NFe: 2 (Estimativa)')
-        return 2
+        // IMPORTANTE: Para Lucro Presumido, NÃO enviar regime_especial_tributacao
+        // Esse campo é apenas para regimes ESPECIAIS (MEI, Simples, etc.)
+        console.log('[NFS-e] → Regime Normal (Lucro Presumido) - NÃO enviar regime_especial_tributacao')
+        return undefined
       case 'LUCRO_REAL':
-        console.log('[NFS-e] → Código Focus NFe: 2 (Estimativa)')
-        return 2
+        // IMPORTANTE: Para Lucro Real, NÃO enviar regime_especial_tributacao
+        // Esse campo é apenas para regimes ESPECIAIS (MEI, Simples, etc.)
+        console.log('[NFS-e] → Regime Normal (Lucro Real) - NÃO enviar regime_especial_tributacao')
+        return undefined
       default:
-        console.log('[NFS-e] → Código Focus NFe: 6 (ME/EPP - padrão)')
-        return 6 // Default: ME/EPP
+        // Se não soubermos o regime, não enviar para evitar erros
+        console.log('[NFS-e] → Regime não definido - NÃO enviar regime_especial_tributacao')
+        return undefined
     }
   }
 
@@ -593,11 +598,15 @@ export class NfseService {
     const serieConfigured = tenant.fiscalConfig?.nfseSerie?.trim()?.toUpperCase()
     console.log('[NFS-e] Série configurada:', serieConfigured || '(não configurada - campo não será enviado)')
 
+    // Obter regime especial de tributação (só para MEI/Simples - não enviar para Lucro Presumido/Real)
+    const regimeEspecial = this.getRegimeEspecialTributacao(tenant.regimeTributario)
+    console.log('[NFS-e] Regime especial tributação:', regimeEspecial ?? '(não será enviado - regime normal)')
+
     const payload: NfsePayload = {
       data_emissao: this.getCurrentDateTimeBrazil(),
       natureza_operacao: 1, // 1 = Tributação no município
       optante_simples_nacional: tenant.regimeTributario === 'SIMPLES_NACIONAL' || tenant.regimeTributario === 'MEI',
-      regime_especial_tributacao: this.getRegimeEspecialTributacao(tenant.regimeTributario),
+      ...(regimeEspecial !== undefined && { regime_especial_tributacao: regimeEspecial }), // Só envia se for MEI/Simples
       ...(serieConfigured && { serie: serieConfigured }), // Só envia se configurada
       prestador: {
         cnpj: onlyNumbers(tenant.cnpj!),
@@ -696,12 +705,13 @@ export class NfseService {
 
         // CAXIAS DO SUL: Requer também o código tributário do município (campo cServ no XML)
         // Município usa sistema INFISC que precisa de:
-        // - item_lista_servico (cLCServ) = código LC 116/2003 (4 dígitos para Caxias)
-        // - codigo_tributario_municipio (cServ) = código específico do município
+        // - item_lista_servico (cLCServ) = código LC 116/2003 com ponto (14.01)
+        // - codigo_tributario_municipio (cServ) = código específico do município (numérico: 1401)
         if (tenant.codigoMunicipio === '4305108') {
-          // Para Caxias do Sul, usar o mesmo código (já está em 4 dígitos)
-          payload.servico.codigo_tributario_municipio = code
-          console.log(`[NFS-e] Caxias do Sul - codigo_tributario_municipio: ${code}`)
+          // Para Caxias do Sul, usar código numérico sem ponto no campo cServ
+          const codigoNumerico = code.replace(/\D/g, '') // Remove ponto: "14.01" -> "1401"
+          payload.servico.codigo_tributario_municipio = codigoNumerico
+          console.log(`[NFS-e] Caxias do Sul - codigo_tributario_municipio: ${codigoNumerico}`)
         }
       }
     } else {
@@ -787,6 +797,11 @@ export class NfseService {
     // Usar os últimos 15 dígitos do timestamp para garantir unicidade
     const numeroDPS = Date.now().toString().slice(-15)
 
+    // Obter códigos de regime (só para MEI/Simples - não enviar para Lucro Presumido/Real)
+    const codigoOpcaoSimples = this.getCodigoOpcaoSimplesNacional(tenant.regimeTributario)
+    const regimeEspecialNacional = this.getRegimeEspecialTributacao(tenant.regimeTributario)
+    console.log('[NFS-e Nacional] Regime especial tributação:', regimeEspecialNacional ?? '(não será enviado - regime normal)')
+
     // Payload no formato DPS (NFSe Nacional)
     const payload: any = {
       // Dados da DPS
@@ -814,9 +829,9 @@ export class NfseService {
       descricao_servico,
       valor_servico: booking.totalPrice,
 
-      // Simples Nacional
-      codigo_opcao_simples_nacional: this.getCodigoOpcaoSimplesNacional(tenant.regimeTributario),
-      regime_especial_tributacao: this.getRegimeEspecialTributacao(tenant.regimeTributario),
+      // Simples Nacional (só envia se for MEI/Simples)
+      ...(codigoOpcaoSimples !== undefined && { codigo_opcao_simples_nacional: codigoOpcaoSimples }),
+      ...(regimeEspecialNacional !== undefined && { regime_especial_tributacao: regimeEspecialNacional }),
 
       // Tributação
       tributacao_iss: 1, // 1 = Tributável

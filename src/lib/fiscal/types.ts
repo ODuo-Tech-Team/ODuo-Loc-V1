@@ -22,7 +22,7 @@ export interface NfsePayload {
   data_emissao: string // ISO 8601
   natureza_operacao: number // 1 = Tributação no município
   optante_simples_nacional: boolean
-  regime_especial_tributacao: number // 1-6
+  regime_especial_tributacao?: number // 1-6 (opcional - não enviar para Lucro Presumido/Real)
   serie?: string // Série da NFS-e (configurada por tenant)
 
   prestador: {
