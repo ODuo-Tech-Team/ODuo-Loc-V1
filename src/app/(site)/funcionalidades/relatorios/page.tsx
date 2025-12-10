@@ -3,11 +3,11 @@ import { BarChart3 } from "lucide-react"
 import { FeaturePageTemplate } from "@/components/site"
 
 export const metadata: Metadata = {
-  title: "Relatorios Avancados | ODuoLoc",
-  description: "Analises profundas com graficos interativos, KPIs de desempenho, exportacao de dados e insights.",
+  title: "Relatórios Avançados | ODuoLoc",
+  description: "Análises profundas com gráficos interativos, KPIs de desempenho, exportação de dados e insights.",
   openGraph: {
-    title: "Relatorios Avancados | ODuoLoc",
-    description: "Tome decisoes baseadas em dados com relatorios completos.",
+    title: "Relatórios Avançados | ODuoLoc",
+    description: "Tome decisões baseadas em dados com relatórios completos.",
   },
 }
 
@@ -15,73 +15,73 @@ export default function RelatoriosPage() {
   return (
     <FeaturePageTemplate
       icon={BarChart3}
-      title="Relatorios Avancados"
-      subtitle="Dados para decisoes inteligentes"
-      description="Analises profundas com graficos interativos, KPIs de desempenho, comparativos de periodo e exportacao de dados. Tome decisoes estrategicas baseadas em dados reais do seu negocio."
-      screenshotPlaceholder="Tela de relatorios e graficos"
+      title="Relatórios Avançados"
+      subtitle="Dados para decisões inteligentes"
+      description="Análises profundas com gráficos interativos, KPIs de desempenho, comparativos de período e exportação de dados. Tome decisões estratégicas baseadas em dados reais do seu negócio."
+      screenshotPlaceholder="Tela de relatórios e gráficos"
       features={[
         {
           title: "Dashboard com KPIs",
-          description: "Visao geral com os principais indicadores: faturamento, ocupacao, ticket medio, clientes ativos."
+          description: "Visão geral com os principais indicadores: faturamento, ocupação, ticket médio, clientes ativos."
         },
         {
-          title: "Graficos Interativos",
-          description: "Graficos de linha, barra, pizza e area com filtros dinamicos e drill-down."
+          title: "Gráficos Interativos",
+          description: "Gráficos de linha, barra, pizza e área com filtros dinâmicos e drill-down."
         },
         {
-          title: "Relatorios Personalizados",
-          description: "Crie relatorios customizados com os campos e filtros que voce precisa."
+          title: "Relatórios Personalizados",
+          description: "Crie relatórios customizados com os campos e filtros que você precisa."
         },
         {
-          title: "Comparativo de Periodos",
-          description: "Compare o desempenho entre periodos: mes atual vs anterior, ano vs ano, etc."
+          title: "Comparativo de Períodos",
+          description: "Compare o desempenho entre períodos: mês atual vs anterior, ano vs ano, etc."
         },
         {
-          title: "Exportacao em Excel/PDF",
-          description: "Exporte qualquer relatorio em Excel para analise ou PDF para apresentacoes."
+          title: "Exportação em Excel/PDF",
+          description: "Exporte qualquer relatório em Excel para análise ou PDF para apresentações."
         },
         {
-          title: "Relatorios por Equipamento",
-          description: "Analise o desempenho individual de cada equipamento: receita, ocupacao, custo."
+          title: "Relatórios por Equipamento",
+          description: "Analise o desempenho individual de cada equipamento: receita, ocupação, custo."
         }
       ]}
       benefits={[
-        "Decisoes baseadas em dados",
-        "Identificacao de tendencias",
-        "Otimizacao da operacao",
-        "Visao de rentabilidade",
-        "Exportacao para contabilidade",
+        "Decisões baseadas em dados",
+        "Identificação de tendências",
+        "Otimização da operação",
+        "Visão de rentabilidade",
+        "Exportação para contabilidade",
         "Acompanhamento de metas"
       ]}
       availableIn={["professional", "enterprise"]}
       faqs={[
         {
-          question: "Quais KPIs estao disponiveis?",
-          answer: "Faturamento, ticket medio, taxa de ocupacao, equipamentos mais locados, clientes mais ativos, e muitos outros."
+          question: "Quais KPIs estão disponíveis?",
+          answer: "Faturamento, ticket médio, taxa de ocupação, equipamentos mais locados, clientes mais ativos, e muitos outros."
         },
         {
-          question: "Posso criar meus proprios relatorios?",
-          answer: "Sim, o sistema permite criar relatorios personalizados selecionando campos, filtros e agrupamentos."
+          question: "Posso criar meus próprios relatórios?",
+          answer: "Sim, o sistema permite criar relatórios personalizados selecionando campos, filtros e agrupamentos."
         },
         {
-          question: "Os relatorios atualizam em tempo real?",
-          answer: "Sim, os dados sao atualizados automaticamente conforme novas reservas e transacoes sao registradas."
+          question: "Os relatórios atualizam em tempo real?",
+          answer: "Sim, os dados são atualizados automaticamente conforme novas reservas e transações são registradas."
         },
         {
-          question: "Posso agendar envio de relatorios?",
-          answer: "Sim, voce pode configurar o envio automatico de relatorios por email em frequencia definida."
+          question: "Posso agendar envio de relatórios?",
+          answer: "Sim, você pode configurar o envio automático de relatórios por email em frequência definida."
         }
       ]}
       relatedModules={[
         {
           title: "Financeiro",
           href: "/funcionalidades/financeiro",
-          description: "Dados financeiros para analise"
+          description: "Dados financeiros para análise"
         },
         {
           title: "Reservas",
           href: "/funcionalidades/reservas",
-          description: "Dados de reservas e ocupacao"
+          description: "Dados de reservas e ocupação"
         },
         {
           title: "Equipamentos",

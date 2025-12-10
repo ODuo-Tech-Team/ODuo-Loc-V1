@@ -32,21 +32,21 @@ interface FeaturePageTemplateProps {
 const planInfo = {
   starter: {
     name: "Starter",
-    price: "R$ 997/mes",
+    price: "R$ 997/mês",
     color: "text-gray-400",
     bgColor: "bg-gray-500/10",
     borderColor: "border-gray-500/30"
   },
   professional: {
     name: "Professional",
-    price: "R$ 1.497/mes",
+    price: "R$ 1.497/mês",
     color: "text-blue-400",
     bgColor: "bg-blue-500/10",
     borderColor: "border-blue-500/30"
   },
   enterprise: {
     name: "Enterprise",
-    price: "R$ 2.997/mes",
+    price: "R$ 2.997/mês",
     color: "text-cyan-400",
     bgColor: "bg-cyan-500/10",
     borderColor: "border-cyan-500/30"
@@ -121,7 +121,7 @@ export function FeaturePageTemplate({
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold mb-4">Recursos Detalhados</h2>
-            <p className="text-gray-400">Tudo o que voce precisa para {title.toLowerCase()}</p>
+            <p className="text-gray-400">Tudo o que você precisa para {title.toLowerCase()}</p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
@@ -143,7 +143,7 @@ export function FeaturePageTemplate({
         <div className="max-w-6xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-3xl font-bold mb-6">Beneficios</h2>
+              <h2 className="text-3xl font-bold mb-6">Benefícios</h2>
               <ul className="space-y-4">
                 {benefits.map((benefit, index) => (
                   <li key={index} className="flex items-start gap-3">
@@ -156,7 +156,7 @@ export function FeaturePageTemplate({
 
             {/* Available in plans */}
             <div className="p-8 rounded-2xl border border-white/10 bg-white/5">
-              <h3 className="text-xl font-semibold mb-6">Disponivel nos planos:</h3>
+              <h3 className="text-xl font-semibold mb-6">Disponível nos planos:</h3>
               <div className="space-y-4">
                 {(["starter", "professional", "enterprise"] as const).map((plan) => {
                   const included = availableIn.includes(plan)
@@ -182,7 +182,7 @@ export function FeaturePageTemplate({
                         {included ? (
                           <Check className={`h-5 w-5 ${info.color}`} />
                         ) : (
-                          <span className="text-xs text-gray-500">Nao incluso</span>
+                          <span className="text-xs text-gray-500">Não incluso</span>
                         )}
                       </div>
                     </div>
@@ -206,7 +206,7 @@ export function FeaturePageTemplate({
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold mb-4">Perguntas Frequentes</h2>
-            <p className="text-gray-400">Duvidas comuns sobre {title.toLowerCase()}</p>
+            <p className="text-gray-400">Dúvidas comuns sobre {title.toLowerCase()}</p>
           </div>
 
           <div className="space-y-4">
@@ -231,7 +231,7 @@ export function FeaturePageTemplate({
         <section className="py-16 px-4 sm:px-6 lg:px-8">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">Modulos Relacionados</h2>
+              <h2 className="text-3xl font-bold mb-4">Módulos Relacionados</h2>
               <p className="text-gray-400">Funcionalidades que complementam {title.toLowerCase()}</p>
             </div>
 

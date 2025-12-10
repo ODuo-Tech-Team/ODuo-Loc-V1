@@ -18,80 +18,80 @@ import {
 
 export const metadata: Metadata = {
   title: "Funcionalidades | ODuoLoc - Sistema para Locadoras",
-  description: "Conheca todas as funcionalidades do ODuoLoc: gestao de equipamentos, reservas, clientes, estoque, financeiro, NFS-e, relatorios e muito mais.",
+  description: "Conheça todas as funcionalidades do ODuoLoc: gestão de equipamentos, reservas, clientes, estoque, financeiro, NFS-e, relatórios e muito mais.",
   openGraph: {
     title: "Funcionalidades | ODuoLoc",
-    description: "Sistema completo para locadoras de equipamentos com todas as ferramentas que voce precisa.",
+    description: "Sistema completo para locadoras de equipamentos com todas as ferramentas que você precisa.",
   },
 }
 
 const modules = [
   {
     icon: Package,
-    title: "Gestao de Equipamentos",
+    title: "Gestão de Equipamentos",
     slug: "equipamentos",
-    description: "Cadastre e gerencie todos os seus equipamentos com fotos, especificacoes, precos por periodo e controle de disponibilidade.",
+    description: "Cadastre e gerencie todos os seus equipamentos com fotos, especificações, preços por período e controle de disponibilidade.",
     features: [
-      "Cadastro completo com fotos e especificacoes",
-      "Precos por periodo (diaria, semanal, mensal)",
+      "Cadastro completo com fotos e especificações",
+      "Preços por período (diária, semanal, mensal)",
       "Categorias e subcategorias",
       "Controle de disponibilidade em tempo real",
-      "Historico de locacoes por equipamento"
+      "Histórico de locações por equipamento"
     ],
     plans: ["starter", "professional", "enterprise"]
   },
   {
     icon: Calendar,
-    title: "Reservas e Orcamentos",
+    title: "Reservas e Orçamentos",
     slug: "reservas",
-    description: "Sistema completo de reservas com calendario integrado, orcamentos automaticos, contratos digitais e controle de devolucao.",
+    description: "Sistema completo de reservas com calendário integrado, orçamentos automáticos, contratos digitais e controle de devolução.",
     features: [
-      "Calendario visual de reservas",
-      "Orcamentos automaticos",
-      "Contratos digitais personalizaveis",
-      "Checklists de entrega e devolucao",
+      "Calendário visual de reservas",
+      "Orçamentos automáticos",
+      "Contratos digitais personalizáveis",
+      "Checklists de entrega e devolução",
       "Status de reserva em tempo real"
     ],
     plans: ["starter", "professional", "enterprise"]
   },
   {
     icon: Users,
-    title: "Gestao de Clientes",
+    title: "Gestão de Clientes",
     slug: "clientes",
-    description: "Cadastro completo de clientes PF e PJ com historico de reservas, multiplos enderecos de entrega e gestao de documentos.",
+    description: "Cadastro completo de clientes PF e PJ com histórico de reservas, múltiplos endereços de entrega e gestão de documentos.",
     features: [
       "Cadastro PF e PJ",
-      "Multiplos enderecos de entrega",
-      "Historico completo de reservas",
+      "Múltiplos endereços de entrega",
+      "Histórico completo de reservas",
       "Documentos anexados",
-      "Consulta automatica de CNPJ"
+      "Consulta automática de CNPJ"
     ],
     plans: ["starter", "professional", "enterprise"]
   },
   {
     icon: CalendarDays,
-    title: "Calendario Integrado",
+    title: "Calendário Integrado",
     slug: "calendario",
-    description: "Visualize todas as reservas em um calendario intuitivo com diferentes visualizacoes e filtros avancados.",
+    description: "Visualize todas as reservas em um calendário intuitivo com diferentes visualizações e filtros avançados.",
     features: [
-      "Visualizacao diaria, semanal e mensal",
+      "Visualização diária, semanal e mensal",
       "Filtros por equipamento e cliente",
       "Drag and drop para reagendar",
       "Cores por status de reserva",
-      "Exportacao de agenda"
+      "Exportação de agenda"
     ],
     plans: ["starter", "professional", "enterprise"]
   },
   {
     icon: Boxes,
-    title: "Gestao de Estoque",
+    title: "Gestão de Estoque",
     slug: "estoque",
-    description: "Controle de estoque avancado com rastreamento por quantidade ou numero de serie, movimentacoes e custos.",
+    description: "Controle de estoque avançado com rastreamento por quantidade ou número de série, movimentações e custos.",
     features: [
-      "Rastreamento por quantidade ou serie",
-      "Movimentacoes de entrada e saida",
-      "Status: disponivel, reservado, manutencao",
-      "Controle de custos de aquisicao",
+      "Rastreamento por quantidade ou série",
+      "Movimentações de entrada e saída",
+      "Status: disponível, reservado, manutenção",
+      "Controle de custos de aquisição",
       "Alertas de estoque baixo"
     ],
     plans: ["starter", "professional", "enterprise"]
@@ -100,27 +100,27 @@ const modules = [
     icon: Target,
     title: "CRM e Comercial",
     slug: "comercial",
-    description: "Gestao de leads e oportunidades com funil de vendas, pipeline comercial e acompanhamento de conversoes.",
+    description: "Gestão de leads e oportunidades com funil de vendas, pipeline comercial e acompanhamento de conversões.",
     features: [
       "Cadastro de leads",
       "Funil de vendas visual",
       "Pipeline comercial",
-      "Historico de interacoes",
-      "Conversao de lead para cliente"
+      "Histórico de interações",
+      "Conversão de lead para cliente"
     ],
     plans: ["professional", "enterprise"]
   },
   {
     icon: CreditCard,
-    title: "Modulo Financeiro",
+    title: "Módulo Financeiro",
     slug: "financeiro",
-    description: "Controle financeiro completo com contas a pagar e receber, fluxo de caixa, categorias e relatorios.",
+    description: "Controle financeiro completo com contas a pagar e receber, fluxo de caixa, categorias e relatórios.",
     features: [
       "Contas a pagar e receber",
       "Fluxo de caixa",
-      "Categorias de transacoes",
-      "Conciliacao bancaria",
-      "Relatorios financeiros"
+      "Categorias de transações",
+      "Conciliação bancária",
+      "Relatórios financeiros"
     ],
     plans: ["professional", "enterprise"]
   },
@@ -128,41 +128,41 @@ const modules = [
     icon: Receipt,
     title: "Notas Fiscais (NFS-e)",
     slug: "notas-fiscais",
-    description: "Emissao de Nota Fiscal de Servico Eletronica integrada diretamente ao sistema de reservas.",
+    description: "Emissão de Nota Fiscal de Serviço Eletrônica integrada diretamente ao sistema de reservas.",
     features: [
-      "Emissao de NFS-e automatica",
-      "Integracao com prefeituras",
-      "Configuracao de impostos",
+      "Emissão de NFS-e automática",
+      "Integração com prefeituras",
+      "Configuração de impostos",
       "Cancelamento de notas",
-      "Relatorios fiscais"
+      "Relatórios fiscais"
     ],
     plans: ["professional", "enterprise"]
   },
   {
     icon: BarChart3,
-    title: "Relatorios Avancados",
+    title: "Relatórios Avançados",
     slug: "relatorios",
-    description: "Analises profundas com graficos interativos, KPIs de desempenho, exportacao de dados e insights.",
+    description: "Análises profundas com gráficos interativos, KPIs de desempenho, exportação de dados e insights.",
     features: [
       "Dashboard com KPIs",
-      "Graficos interativos",
-      "Relatorios personalizados",
-      "Exportacao em Excel/PDF",
-      "Comparativos de periodo"
+      "Gráficos interativos",
+      "Relatórios personalizados",
+      "Exportação em Excel/PDF",
+      "Comparativos de período"
     ],
     plans: ["professional", "enterprise"]
   },
   {
     icon: Plug,
-    title: "API e Integracoes",
+    title: "API e Integrações",
     slug: "integracoes",
     description: "API REST completa e webhooks em tempo real para integrar com ERPs, e-commerces e outros sistemas.",
     features: [
       "API REST documentada",
       "Webhooks em tempo real",
-      "Integracao com WhatsApp",
+      "Integração com WhatsApp",
       "Chaves de API seguras",
-      "Rate limiting configuravel"
+      "Rate limiting configurável"
     ],
     plans: ["professional", "enterprise"]
   },
@@ -259,7 +259,7 @@ export default function FuncionalidadesPage() {
                   {/* Plans */}
                   <div className="lg:border-l lg:border-white/10 lg:pl-8">
                     <h3 className="text-sm font-semibold text-gray-300 mb-4">
-                      Disponivel em:
+                      Disponível em:
                     </h3>
                     <div className="space-y-3">
                       {(["starter", "professional", "enterprise"] as const).map((plan) => {
@@ -281,7 +281,7 @@ export default function FuncionalidadesPage() {
                               {included ? (
                                 <Check className={`h-4 w-4 ${planInfo.color}`} />
                               ) : (
-                                <span className="text-xs text-gray-500">Nao incluso</span>
+                                <span className="text-xs text-gray-500">Não incluso</span>
                               )}
                             </div>
                           </div>
@@ -308,21 +308,21 @@ export default function FuncionalidadesPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-white/10">
-                  <th className="text-left py-4 px-4 text-gray-400 font-medium">Modulo</th>
+                  <th className="text-left py-4 px-4 text-gray-400 font-medium">Módulo</th>
                   <th className="text-center py-4 px-4">
                     <div className="text-gray-400 font-medium">Starter</div>
                     <div className="text-xl font-bold text-white">R$ 997</div>
-                    <div className="text-xs text-gray-500">/mes</div>
+                    <div className="text-xs text-gray-500">/mês</div>
                   </th>
                   <th className="text-center py-4 px-4">
                     <div className="text-blue-400 font-medium">Professional</div>
                     <div className="text-xl font-bold text-white">R$ 1.497</div>
-                    <div className="text-xs text-gray-500">/mes</div>
+                    <div className="text-xs text-gray-500">/mês</div>
                   </th>
                   <th className="text-center py-4 px-4">
                     <div className="text-cyan-400 font-medium">Enterprise</div>
                     <div className="text-xl font-bold text-white">R$ 2.997</div>
-                    <div className="text-xs text-gray-500">/mes</div>
+                    <div className="text-xs text-gray-500">/mês</div>
                   </th>
                 </tr>
               </thead>
@@ -355,19 +355,19 @@ export default function FuncionalidadesPage() {
                 ))}
                 {/* Limites */}
                 <tr className="border-b border-white/5 bg-white/5">
-                  <td className="py-4 px-4 text-gray-300 font-medium">Usuarios</td>
-                  <td className="text-center py-4 px-4 text-gray-300">Ate 2</td>
-                  <td className="text-center py-4 px-4 text-gray-300">Ate 5</td>
-                  <td className="text-center py-4 px-4 text-gray-300">Ate 10</td>
+                  <td className="py-4 px-4 text-gray-300 font-medium">Usuários</td>
+                  <td className="text-center py-4 px-4 text-gray-300">Até 2</td>
+                  <td className="text-center py-4 px-4 text-gray-300">Até 5</td>
+                  <td className="text-center py-4 px-4 text-gray-300">Até 10</td>
                 </tr>
                 <tr className="border-b border-white/5 bg-white/5">
                   <td className="py-4 px-4 text-gray-300 font-medium">Equipamentos</td>
-                  <td className="text-center py-4 px-4 text-gray-300">Ate 50</td>
-                  <td className="text-center py-4 px-4 text-gray-300">Ate 200</td>
+                  <td className="text-center py-4 px-4 text-gray-300">Até 50</td>
+                  <td className="text-center py-4 px-4 text-gray-300">Até 200</td>
                   <td className="text-center py-4 px-4 text-gray-300">Ilimitado</td>
                 </tr>
                 <tr className="border-b border-white/5 bg-white/5">
-                  <td className="py-4 px-4 text-gray-300 font-medium">Reservas/mes</td>
+                  <td className="py-4 px-4 text-gray-300 font-medium">Reservas/mês</td>
                   <td className="text-center py-4 px-4 text-gray-300">200</td>
                   <td className="text-center py-4 px-4 text-gray-300">1.000</td>
                   <td className="text-center py-4 px-4 text-gray-300">Ilimitado</td>
@@ -384,7 +384,7 @@ export default function FuncionalidadesPage() {
 
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-500 mb-4">
-              Taxa de implementacao: R$ 2.000 (unica)
+              Taxa de implementação: R$ 2.000 (única)
             </p>
             <Link href="/planos">
               <Button className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white">
@@ -398,20 +398,19 @@ export default function FuncionalidadesPage() {
       {/* CTA */}
       <section className="py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center p-12 rounded-3xl border border-white/10 bg-gradient-to-b from-blue-900/20 to-cyan-900/20">
-          <h2 className="text-3xl font-bold mb-4">Pronto para comecar?</h2>
+          <h2 className="text-3xl font-bold mb-4">Pronto para começar?</h2>
           <p className="text-gray-400 mb-8 max-w-xl mx-auto">
-            Teste todas as funcionalidades gratuitamente por 14 dias.
-            Sem cartao de credito necessario.
+            Descubra como o ODuoLoc pode transformar a gestão da sua locadora.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/planos">
               <Button size="lg" className="bg-white text-black hover:bg-gray-200">
-                Comecar Teste Gratis <ArrowRight className="ml-2 h-4 w-4" />
+                Começar Agora <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
             <Link href="/contato">
               <Button size="lg" variant="outline" className="border-white/20 bg-white/5 hover:bg-white/10 text-white">
-                Agendar Demonstracao
+                Agendar Demonstração
               </Button>
             </Link>
           </div>

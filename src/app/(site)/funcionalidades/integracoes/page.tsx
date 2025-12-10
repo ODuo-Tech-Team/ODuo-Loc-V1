@@ -3,10 +3,10 @@ import { Plug } from "lucide-react"
 import { FeaturePageTemplate } from "@/components/site"
 
 export const metadata: Metadata = {
-  title: "API e Integracoes | ODuoLoc",
+  title: "API e Integrações | ODuoLoc",
   description: "API REST completa e webhooks em tempo real para integrar com ERPs, e-commerces e outros sistemas.",
   openGraph: {
-    title: "API e Integracoes | ODuoLoc",
+    title: "API e Integrações | ODuoLoc",
     description: "Integre o ODuoLoc com seus outros sistemas.",
   },
 }
@@ -15,41 +15,41 @@ export default function IntegracoesPage() {
   return (
     <FeaturePageTemplate
       icon={Plug}
-      title="API e Integracoes"
+      title="API e Integrações"
       subtitle="Conecte seus sistemas"
-      description="API REST completa e documentada para integrar o ODuoLoc com ERPs, e-commerces, sistemas de contabilidade e outras ferramentas. Webhooks em tempo real para automacoes avancadas."
-      screenshotPlaceholder="Documentacao da API"
+      description="API REST completa e documentada para integrar o ODuoLoc com ERPs, e-commerces, sistemas de contabilidade e outras ferramentas. Webhooks em tempo real para automações avançadas."
+      screenshotPlaceholder="Documentação da API"
       features={[
         {
           title: "API REST Documentada",
-          description: "API completa com documentacao interativa (Swagger/OpenAPI) para todas as operacoes do sistema."
+          description: "API completa com documentação interativa (Swagger/OpenAPI) para todas as operações do sistema."
         },
         {
           title: "Webhooks em Tempo Real",
-          description: "Receba notificacoes automaticas quando eventos ocorrerem: nova reserva, pagamento, etc."
+          description: "Receba notificações automáticas quando eventos ocorrerem: nova reserva, pagamento, etc."
         },
         {
-          title: "Integracao com WhatsApp",
-          description: "Envie notificacoes automaticas para clientes via WhatsApp em eventos importantes."
+          title: "Integração com WhatsApp",
+          description: "Envie notificações automáticas para clientes via WhatsApp em eventos importantes."
         },
         {
           title: "Chaves de API Seguras",
-          description: "Gere e gerencie multiplas chaves de API com diferentes permissoes."
+          description: "Gere e gerencie múltiplas chaves de API com diferentes permissões."
         },
         {
-          title: "Rate Limiting Configuravel",
-          description: "Controle o numero de requisicoes por minuto para cada integracao."
+          title: "Rate Limiting Configurável",
+          description: "Controle o número de requisições por minuto para cada integração."
         },
         {
-          title: "Logs de Integracao",
+          title: "Logs de Integração",
           description: "Acompanhe todas as chamadas de API e webhooks com logs detalhados."
         }
       ]}
       benefits={[
-        "Automacao de processos",
-        "Integracao com sistemas existentes",
-        "Sincronizacao de dados",
-        "Notificacoes em tempo real",
+        "Automação de processos",
+        "Integração com sistemas existentes",
+        "Sincronização de dados",
+        "Notificações em tempo real",
         "Economia de tempo",
         "Flexibilidade total"
       ]}
@@ -57,19 +57,19 @@ export default function IntegracoesPage() {
       faqs={[
         {
           question: "Qual o formato da API?",
-          answer: "API REST com respostas em JSON. Autenticacao via Bearer Token (API Key)."
+          answer: "API REST com respostas em JSON. Autenticação via Bearer Token (API Key)."
         },
         {
-          question: "Quais operacoes estao disponiveis na API?",
-          answer: "Todas: equipamentos, clientes, reservas, financeiro, estoque. Consulte a documentacao completa."
+          question: "Quais operações estão disponíveis na API?",
+          answer: "Todas: equipamentos, clientes, reservas, financeiro, estoque. Consulte a documentação completa."
         },
         {
           question: "Posso integrar com meu ERP?",
-          answer: "Sim, a API permite sincronizar dados com qualquer sistema que suporte integracoes REST."
+          answer: "Sim, a API permite sincronizar dados com qualquer sistema que suporte integrações REST."
         },
         {
-          question: "Os webhooks tem retry automatico?",
-          answer: "Sim, em caso de falha, o sistema tenta reenviar o webhook ate 3 vezes com intervalo crescente."
+          question: "Os webhooks têm retry automático?",
+          answer: "Sim, em caso de falha, o sistema tenta reenviar o webhook até 3 vezes com intervalo crescente."
         }
       ]}
       relatedModules={[
@@ -86,7 +86,7 @@ export default function IntegracoesPage() {
         {
           title: "Financeiro",
           href: "/funcionalidades/financeiro",
-          description: "Integre com sistemas contabeis"
+          description: "Integre com sistemas contábeis"
         }
       ]}
     />

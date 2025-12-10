@@ -28,7 +28,7 @@ import {
 
 const contactSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
-  email: z.string().email("Email invalido"),
+  email: z.string().email("Email inválido"),
   phone: z.string().optional(),
   company: z.string().optional(),
   subject: z.string().min(1, "Selecione um assunto"),
@@ -38,25 +38,25 @@ const contactSchema = z.object({
 type ContactFormData = z.infer<typeof contactSchema>
 
 const subjects = [
-  { value: "demo", label: "Solicitar demonstracao" },
-  { value: "pricing", label: "Duvidas sobre precos" },
-  { value: "support", label: "Suporte tecnico" },
+  { value: "demo", label: "Solicitar demonstração" },
+  { value: "pricing", label: "Dúvidas sobre preços" },
+  { value: "support", label: "Suporte técnico" },
   { value: "partnership", label: "Parcerias" },
   { value: "other", label: "Outro assunto" },
 ]
 
 const faqs = [
   {
-    question: "Como funciona o teste gratis?",
-    answer: "Voce tem 14 dias para testar todas as funcionalidades do sistema sem compromisso e sem precisar informar cartao de credito."
+    question: "Como funciona a contratação?",
+    answer: "Escolha o plano que mais se encaixa na sua operação e nossa equipe entra em contato para agendar a implementação."
   },
   {
-    question: "Quanto tempo leva a implementacao?",
-    answer: "A implementacao padrao leva de 3 a 5 dias uteis. Nossa equipe auxilia em todo o processo de configuracao."
+    question: "Quanto tempo leva a implementação?",
+    answer: "A implementação padrão leva de 3 a 5 dias úteis. Nossa equipe auxilia em todo o processo de configuração."
   },
   {
     question: "Posso migrar meus dados de outro sistema?",
-    answer: "Sim! Nossa equipe pode ajudar na migracao de dados do seu sistema atual para o ODuoLoc."
+    answer: "Sim! Nossa equipe pode ajudar na migração de dados do seu sistema atual para o ODuoLoc."
   },
 ]
 
@@ -107,7 +107,7 @@ export default function ContatoPage() {
             </span>
           </h1>
           <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
-            Estamos prontos para ajudar. Tire suas duvidas, solicite uma demonstracao
+            Estamos prontos para ajudar. Tire suas dúvidas, solicite uma demonstração
             ou fale com nosso time de especialistas.
           </p>
         </div>
@@ -168,10 +168,10 @@ export default function ContatoPage() {
                 <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center mb-4">
                   <Clock className="h-6 w-6 text-amber-400" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">Horario de Atendimento</h3>
+                <h3 className="text-lg font-semibold mb-2">Horário de Atendimento</h3>
                 <p className="text-gray-400 text-sm">
                   Segunda a Sexta<br />
-                  9h as 18h (Horario de Brasilia)
+                  9h às 18h (Horário de Brasília)
                 </p>
               </div>
 
@@ -180,9 +180,9 @@ export default function ContatoPage() {
                 <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center mb-4">
                   <MapPin className="h-6 w-6 text-purple-400" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">Localizacao</h3>
+                <h3 className="text-lg font-semibold mb-2">Localização</h3>
                 <p className="text-gray-400 text-sm">
-                  Sao Paulo - SP<br />
+                  São Paulo - SP<br />
                   Brasil
                 </p>
               </div>
@@ -323,7 +323,7 @@ export default function ContatoPage() {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold mb-4">Perguntas Frequentes</h2>
-            <p className="text-gray-400">Respostas rapidas para duvidas comuns</p>
+            <p className="text-gray-400">Respostas rápidas para dúvidas comuns</p>
           </div>
 
           <div className="space-y-4">

@@ -65,25 +65,25 @@ export default function HomePage() {
     {
       icon: Package,
       title: "Gestão de Equipamentos",
-      description: "Cadastre equipamentos com fotos, especificações, preços por periodo e controle de disponibilidade em tempo real.",
+      description: "Cadastre equipamentos com fotos, especificações, preços por período e controle de disponibilidade em tempo real.",
       href: "/funcionalidades/equipamentos"
     },
     {
       icon: Calendar,
       title: "Reservas e Calendário",
-      description: "Sistema completo de reservas com calendario integrado, orçamentos, contratos e controle de devolução.",
+      description: "Sistema completo de reservas com calendário integrado, orçamentos, contratos e controle de devolução.",
       href: "/funcionalidades/reservas"
     },
     {
       icon: Users,
       title: "Gestão de Clientes",
-      description: "Cadastro completo de clientes PF/PJ com histórico de reservas, multiplos endereços de entrega e documentos.",
+      description: "Cadastro completo de clientes PF/PJ com histórico de reservas, múltiplos endereços de entrega e documentos.",
       href: "/funcionalidades/clientes"
     },
     {
       icon: Boxes,
       title: "Controle de Estoque",
-      description: "Rastreamento por quantidade ou número de serie, movimentações, custos e status (disponível, reservado, manutenção).",
+      description: "Rastreamento por quantidade ou número de série, movimentações, custos e status (disponível, reservado, manutenção).",
       href: "/funcionalidades/estoque"
     },
     {
@@ -101,7 +101,7 @@ export default function HomePage() {
     {
       icon: Receipt,
       title: "Notas Fiscais (NFS-e)",
-      description: "Emissão de notas fiscais de servico eletronica integrada diretamente ao sistema de reservas.",
+      description: "Emissão de notas fiscais de serviço eletrônica integrada diretamente ao sistema de reservas.",
       href: "/funcionalidades/notas-fiscais"
     },
     {
@@ -118,7 +118,7 @@ export default function HomePage() {
     },
     {
       icon: Bell,
-      title: "Notificações Automaticas",
+      title: "Notificações Automáticas",
       description: "Envio automático de emails e mensagens para confirmações, lembretes e atualizações de status.",
       href: "/funcionalidades/equipamentos"
     },
@@ -131,7 +131,7 @@ export default function HomePage() {
     {
       icon: Smartphone,
       title: "100% Responsivo",
-      description: "Acesse de qualquer dispositivo - desktop, tablet ou smartphone com experiencia otimizada.",
+      description: "Acesse de qualquer dispositivo - desktop, tablet ou smartphone com experiência otimizada.",
       href: "/sobre"
     }
   ]
@@ -140,7 +140,7 @@ export default function HomePage() {
     {
       icon: Zap,
       title: "Rápido e Intuitivo",
-      description: "Interface moderna e fácil de usar. Sua equipe aprende em minutos, nao em dias.",
+      description: "Interface moderna e fácil de usar. Sua equipe aprende em minutos, não em dias.",
       color: "text-emerald-400",
       bgColor: "bg-emerald-400/10"
     },
@@ -202,7 +202,7 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
             <Link href="/planos" className="w-full sm:w-auto">
               <Button size="lg" className="w-full h-12 px-8 text-base bg-blue-600 hover:bg-blue-500 shadow-[0_0_30px_-10px_#317AE0]">
-                Comecar Gratuitamente
+                Começar Agora
               </Button>
             </Link>
             <Link href="/funcionalidades" className="w-full sm:w-auto">
@@ -231,7 +231,7 @@ export default function HomePage() {
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">Por que escolher a ODuoLoc?</h2>
             <p className="text-gray-400 max-w-2xl mx-auto text-lg">
-              A plataforma completa para modernizar a gestao da sua locadora de equipamentos
+              A plataforma completa para modernizar a gestão da sua locadora de equipamentos
             </p>
           </div>
 
@@ -253,9 +253,9 @@ export default function HomePage() {
       <section id="features" className="py-24 bg-black/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Tudo que você precisa em um so lugar</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Tudo que você precisa em um só lugar</h2>
             <p className="text-gray-400 max-w-2xl mx-auto text-lg">
-              Sistema completo com todas as ferramentas para gerenciar sua locadora com eficiencia
+              Sistema completo com todas as ferramentas para gerenciar sua locadora com eficiência
             </p>
           </div>
 
@@ -291,7 +291,7 @@ export default function HomePage() {
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">Planos para todos os tamanhos</h2>
             <p className="text-gray-400 max-w-2xl mx-auto text-lg">
-              Escolha o plano ideal para o tamanho da sua operacao
+              Escolha o plano ideal para o tamanho da sua operação
             </p>
           </div>
 
@@ -300,19 +300,19 @@ export default function HomePage() {
             <div className="p-8 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all duration-300 flex flex-col">
               <div className="mb-6">
                 <h3 className="text-2xl font-bold text-white mb-2">Starter</h3>
-                <p className="text-gray-400 text-sm">Ideal para quem esta começando</p>
+                <p className="text-gray-400 text-sm">Ideal para quem está começando</p>
               </div>
               <div className="mb-6">
                 <div className="flex items-baseline gap-2">
                   <span className="text-4xl font-bold text-white">R$ 997</span>
-                  <span className="text-gray-400">/mes</span>
+                  <span className="text-gray-400">/mês</span>
                 </div>
               </div>
               <ul className="space-y-3 mb-8 flex-1">
                 {[
-                  "Ate 2 usuarios",
-                  "Ate 50 equipamentos",
-                  "200 reservas/mes",
+                  "Até 2 usuários",
+                  "Até 50 equipamentos",
+                  "200 reservas/mês",
                   "5GB de armazenamento",
                   "Gestão de estoque",
                   "Suporte por email"
@@ -344,20 +344,20 @@ export default function HomePage() {
               <div className="mb-6">
                 <div className="flex items-baseline gap-2">
                   <span className="text-4xl font-bold text-white">R$ 1.497</span>
-                  <span className="text-gray-300">/mes</span>
+                  <span className="text-gray-300">/mês</span>
                 </div>
               </div>
               <ul className="space-y-3 mb-8 flex-1">
                 {[
-                  "Ate 5 usuarios",
-                  "Ate 200 equipamentos",
-                  "1.000 reservas/mes",
+                  "Até 5 usuários",
+                  "Até 200 equipamentos",
+                  "1.000 reservas/mês",
                   "20GB de armazenamento",
                   "Emissão de NFS-e",
                   "Módulo Financeiro",
                   "Relatórios Avançados",
-                  "API de Integracao",
-                  "Suporte prioritario"
+                  "API de Integração",
+                  "Suporte prioritário"
                 ].map((feature, i) => (
                   <li key={i} className="flex items-center gap-3 text-sm text-white">
                     <Check className="h-5 w-5 text-blue-400 flex-shrink-0" />
@@ -376,17 +376,17 @@ export default function HomePage() {
             <div className="p-8 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all duration-300 flex flex-col">
               <div className="mb-6">
                 <h3 className="text-2xl font-bold text-white mb-2">Enterprise</h3>
-                <p className="text-gray-400 text-sm">Solucao completa para grandes operações</p>
+                <p className="text-gray-400 text-sm">Solução completa para grandes operações</p>
               </div>
               <div className="mb-6">
                 <div className="flex items-baseline gap-2">
                   <span className="text-4xl font-bold text-white">R$ 2.997</span>
-                  <span className="text-gray-400">/mes</span>
+                  <span className="text-gray-400">/mês</span>
                 </div>
               </div>
               <ul className="space-y-3 mb-8 flex-1">
                 {[
-                  "Ate 10 usuarios",
+                  "Até 10 usuários",
                   "Equipamentos ilimitados",
                   "Reservas ilimitadas",
                   "500GB de armazenamento",
@@ -419,7 +419,7 @@ export default function HomePage() {
           <div className="mt-12 text-center p-8 rounded-2xl border border-white/10 bg-gradient-to-r from-blue-900/20 to-cyan-900/20 max-w-2xl mx-auto">
             <h3 className="text-xl font-bold text-white mb-2">Precisa de mais?</h3>
             <p className="text-gray-400 mb-4">
-              Temos solucoes personalizadas para operações de grande escala.
+              Temos soluções personalizadas para operações de grande escala.
             </p>
             <a href="mailto:contato@oduoloc.com.br" className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors font-medium">
               Fale com nosso time de vendas
@@ -451,7 +451,7 @@ export default function HomePage() {
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">Perguntas Frequentes</h2>
             <p className="text-gray-400 max-w-2xl mx-auto text-lg">
-              Tire suas duvidas sobre o sistema para locadora de equipamentos
+              Tire suas dúvidas sobre o sistema para locadora de equipamentos
             </p>
           </div>
 

@@ -287,7 +287,7 @@ export default function EditarPostPage() {
   if (!post) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-400">Post nao encontrado</p>
+        <p className="text-gray-400">Post não encontrado</p>
         <Link href="/super-admin/blog">
           <Button variant="link" className="mt-4">
             Voltar para lista
@@ -359,14 +359,14 @@ export default function EditarPostPage() {
           <div className="rounded-xl border border-white/10 bg-white/5 p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="content">Conteudo</TabsTrigger>
+                <TabsTrigger value="content">Conteúdo</TabsTrigger>
                 <TabsTrigger value="seo">SEO</TabsTrigger>
               </TabsList>
 
               <TabsContent value="content" className="space-y-6">
                 {/* Title */}
                 <div className="space-y-2">
-                  <Label>Titulo *</Label>
+                  <Label>Título *</Label>
                   <Input
                     value={formData.title}
                     onChange={(e) =>
@@ -375,7 +375,7 @@ export default function EditarPostPage() {
                         title: e.target.value,
                       })
                     }
-                    placeholder="Titulo do post"
+                    placeholder="Título do post"
                     className="bg-white/5 border-white/10 text-lg"
                   />
                   <p className="text-xs text-gray-500">
@@ -425,13 +425,13 @@ export default function EditarPostPage() {
 
                 {/* Content */}
                 <div className="space-y-2">
-                  <Label>Conteudo *</Label>
+                  <Label>Conteúdo *</Label>
                   <Textarea
                     value={formData.content}
                     onChange={(e) =>
                       setFormData({ ...formData, content: e.target.value })
                     }
-                    placeholder="Escreva o conteudo do post aqui... (suporta HTML)"
+                    placeholder="Escreva o conteúdo do post aqui... (suporta HTML)"
                     rows={15}
                     className="bg-white/5 border-white/10 font-mono text-sm"
                   />
@@ -466,16 +466,16 @@ export default function EditarPostPage() {
                 <div className="space-y-2">
                   <Label>Categoria</Label>
                   <Select
-                    value={formData.categoryId}
+                    value={formData.categoryId || "none"}
                     onValueChange={(value) =>
-                      setFormData({ ...formData, categoryId: value })
+                      setFormData({ ...formData, categoryId: value === "none" ? "" : value })
                     }
                   >
                     <SelectTrigger className="bg-white/5 border-white/10">
                       <SelectValue placeholder="Selecione uma categoria" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Sem categoria</SelectItem>
+                      <SelectItem value="none">Sem categoria</SelectItem>
                       {categories?.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id}>
                           {cat.name}
@@ -538,19 +538,19 @@ export default function EditarPostPage() {
                     className="bg-white/5 border-white/10"
                   />
                   <p className="text-xs text-gray-500">
-                    A palavra-chave principal que voce quer ranquear
+                    A palavra-chave principal que você quer ranquear
                   </p>
                 </div>
 
                 {/* Meta Title */}
                 <div className="space-y-2">
-                  <Label>Titulo SEO</Label>
+                  <Label>Título SEO</Label>
                   <Input
                     value={formData.metaTitle}
                     onChange={(e) =>
                       setFormData({ ...formData, metaTitle: e.target.value })
                     }
-                    placeholder={formData.title || "Titulo SEO (deixe vazio para usar o titulo)"}
+                    placeholder={formData.title || "Título SEO (deixe vazio para usar o título)"}
                     className="bg-white/5 border-white/10"
                   />
                   <p className="text-xs text-gray-500">
@@ -560,13 +560,13 @@ export default function EditarPostPage() {
 
                 {/* Meta Description */}
                 <div className="space-y-2">
-                  <Label>Meta Descricao</Label>
+                  <Label>Meta Descrição</Label>
                   <Textarea
                     value={formData.metaDescription}
                     onChange={(e) =>
                       setFormData({ ...formData, metaDescription: e.target.value })
                     }
-                    placeholder="Descricao que aparece nos resultados do Google (120-160 caracteres)"
+                    placeholder="Descrição que aparece nos resultados do Google (120-160 caracteres)"
                     rows={3}
                     className="bg-white/5 border-white/10"
                   />
@@ -583,24 +583,24 @@ export default function EditarPostPage() {
                 <div className="space-y-4 pt-4 border-t border-white/10">
                   <h3 className="font-semibold">Open Graph (Redes Sociais)</h3>
                   <div className="space-y-2">
-                    <Label>Titulo para Redes Sociais</Label>
+                    <Label>Título para Redes Sociais</Label>
                     <Input
                       value={formData.ogTitle}
                       onChange={(e) =>
                         setFormData({ ...formData, ogTitle: e.target.value })
                       }
-                      placeholder={formData.title || "Titulo para Facebook/LinkedIn"}
+                      placeholder={formData.title || "Título para Facebook/LinkedIn"}
                       className="bg-white/5 border-white/10"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Descricao para Redes Sociais</Label>
+                    <Label>Descrição para Redes Sociais</Label>
                     <Textarea
                       value={formData.ogDescription}
                       onChange={(e) =>
                         setFormData({ ...formData, ogDescription: e.target.value })
                       }
-                      placeholder={formData.metaDescription || "Descricao para compartilhamento"}
+                      placeholder={formData.metaDescription || "Descrição para compartilhamento"}
                       rows={2}
                       className="bg-white/5 border-white/10"
                     />
@@ -609,10 +609,10 @@ export default function EditarPostPage() {
 
                 {/* Advanced */}
                 <div className="space-y-4 pt-4 border-t border-white/10">
-                  <h3 className="font-semibold">Configuracoes Avancadas</h3>
+                  <h3 className="font-semibold">Configurações Avançadas</h3>
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label>Nao indexar (noindex)</Label>
+                      <Label>Não indexar (noindex)</Label>
                       <p className="text-xs text-gray-500">Impede o Google de indexar</p>
                     </div>
                     <Switch
@@ -624,7 +624,7 @@ export default function EditarPostPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label>Nao seguir links (nofollow)</Label>
+                      <Label>Não seguir links (nofollow)</Label>
                       <p className="text-xs text-gray-500">Impede o Google de seguir links</p>
                     </div>
                     <Switch
@@ -646,35 +646,35 @@ export default function EditarPostPage() {
           <div className="rounded-xl border border-white/10 bg-white/5 p-6">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
               <Settings className="h-4 w-4" />
-              Analise SEO
+              Análise SEO
             </h3>
 
             <div className="text-center mb-6">
               <div className={`text-5xl font-bold ${getSeoScoreColor()}`}>
                 {seoScore}
               </div>
-              <div className="text-gray-400 text-sm">Pontuacao SEO</div>
+              <div className="text-gray-400 text-sm">Pontuação SEO</div>
             </div>
 
             <div className="space-y-3">
               <SeoCheckItem
-                label="Palavra-chave no titulo"
+                label="Palavra-chave no título"
                 check={seoChecks.titleHasKeyword}
               />
               <SeoCheckItem
-                label="Palavra-chave na meta descricao"
+                label="Palavra-chave na meta descrição"
                 check={seoChecks.metaDescriptionHasKeyword}
               />
               <SeoCheckItem
-                label="Titulo com 30-60 caracteres"
+                label="Título com 30-60 caracteres"
                 check={seoChecks.titleLength}
               />
               <SeoCheckItem
-                label="Meta descricao com 120-160 caracteres"
+                label="Meta descrição com 120-160 caracteres"
                 check={seoChecks.metaDescriptionLength}
               />
               <SeoCheckItem
-                label="Palavra-chave no conteudo"
+                label="Palavra-chave no conteúdo"
                 check={seoChecks.contentHasKeyword}
               />
               <SeoCheckItem
@@ -682,7 +682,7 @@ export default function EditarPostPage() {
                 check={seoChecks.excerptHasKeyword}
               />
               <SeoCheckItem
-                label="Conteudo com 300+ palavras"
+                label="Conteúdo com 300+ palavras"
                 check={seoChecks.contentLength}
               />
               <SeoCheckItem
@@ -706,14 +706,14 @@ export default function EditarPostPage() {
                 oduoloc.com.br/blog/{formData.slug || "url-do-post"}
               </div>
               <div className="text-gray-600 text-sm mt-1 line-clamp-2">
-                {formData.metaDescription || formData.excerpt || "Descricao do post aparece aqui..."}
+                {formData.metaDescription || formData.excerpt || "Descrição do post aparece aqui..."}
               </div>
             </div>
           </div>
 
           {/* Post Info */}
           <div className="rounded-xl border border-white/10 bg-white/5 p-6">
-            <h3 className="font-semibold mb-4">Informacoes</h3>
+            <h3 className="font-semibold mb-4">Informações</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-400">Status:</span>

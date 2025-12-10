@@ -15,11 +15,11 @@ import {
 } from "lucide-react"
 
 export const metadata: Metadata = {
-  title: "Sobre Nos - Quem Somos | ODuoLoc",
-  description: "Conheca a ODuo Assessoria, empresa por tras do ODuoLoc - o sistema de gestao mais completo para locadoras de equipamentos do Brasil.",
+  title: "Sobre Nós - Quem Somos | ODuoLoc",
+  description: "Conheça a ODuo Assessoria, empresa por trás do ODuoLoc - o sistema de gestão mais completo para locadoras de equipamentos do Brasil.",
   openGraph: {
-    title: "Sobre Nos | ODuoLoc",
-    description: "Conheca a historia e os valores da ODuo Assessoria.",
+    title: "Sobre Nós | ODuoLoc",
+    description: "Conheça a história e os valores da ODuo Assessoria.",
   },
 }
 
@@ -28,40 +28,40 @@ export default function SobrePage() {
     {
       icon: Target,
       title: "Foco no Cliente",
-      description: "Cada funcionalidade e decisao e pensada para resolver problemas reais das locadoras."
+      description: "Cada funcionalidade e decisão é pensada para resolver problemas reais das locadoras."
     },
     {
       icon: Zap,
-      title: "Inovacao Continua",
+      title: "Inovação Contínua",
       description: "Estamos sempre evoluindo o sistema com novas funcionalidades e melhorias."
     },
     {
       icon: Shield,
-      title: "Seguranca e Confianca",
-      description: "Seus dados sao protegidos com os mais altos padroes de seguranca."
+      title: "Segurança e Confiança",
+      description: "Seus dados são protegidos com os mais altos padrões de segurança."
     },
     {
       icon: Heart,
       title: "Parceria de Longo Prazo",
-      description: "Nao somos apenas um fornecedor, somos parceiros no crescimento do seu negocio."
+      description: "Não somos apenas um fornecedor, somos parceiros no crescimento do seu negócio."
     }
   ]
 
   const milestones = [
     {
       year: "2023",
-      title: "Inicio da Jornada",
-      description: "Comecamos a desenvolver o ODuoLoc apos identificar a falta de sistemas modernos para locadoras."
+      title: "Início da Jornada",
+      description: "Começamos a desenvolver o ODuoLoc após identificar a falta de sistemas modernos para locadoras."
     },
     {
       year: "2024",
-      title: "Lancamento Beta",
+      title: "Lançamento Beta",
       description: "Primeiros clientes testam a plataforma e ajudam a moldar as funcionalidades."
     },
     {
       year: "2025",
-      title: "Versao 1.0",
-      description: "Lancamento oficial com todas as funcionalidades core: reservas, estoque, financeiro e NFS-e."
+      title: "Versão 1.0",
+      description: "Lançamento oficial com todas as funcionalidades core: reservas, estoque, financeiro e NFS-e."
     }
   ]
 
@@ -69,11 +69,11 @@ export default function SobrePage() {
     "Sistema 100% cloud - acesse de qualquer lugar",
     "Interface moderna e intuitiva",
     "Suporte humanizado e dedicado",
-    "Atualizacoes constantes sem custo adicional",
-    "Integracao com NFS-e e sistemas fiscais",
-    "API completa para integracoes",
+    "Atualizações constantes sem custo adicional",
+    "Integração com NFS-e e sistemas fiscais",
+    "API completa para integrações",
     "Multi-tenant com dados isolados",
-    "Backups automaticos diarios"
+    "Backups automáticos diários"
   ]
 
   return (
@@ -88,8 +88,8 @@ export default function SobrePage() {
             </span>
           </h1>
           <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
-            Somos uma empresa de tecnologia focada em criar solucoes que transformam
-            a forma como locadoras de equipamentos gerenciam seus negocios.
+            Somos uma empresa de tecnologia focada em criar soluções que transformam
+            a forma como locadoras de equipamentos gerenciam seus negócios.
           </p>
         </div>
       </section>
@@ -98,29 +98,29 @@ export default function SobrePage() {
       <section className="py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-2 gap-8">
-            {/* Missao */}
+            {/* Missão */}
             <div className="p-8 rounded-2xl border border-white/10 bg-white/5">
               <div className="w-14 h-14 rounded-xl bg-blue-500/10 flex items-center justify-center mb-6">
                 <Target className="h-7 w-7 text-blue-400" />
               </div>
-              <h2 className="text-2xl font-bold mb-4">Nossa Missao</h2>
+              <h2 className="text-2xl font-bold mb-4">Nossa Missão</h2>
               <p className="text-gray-400 leading-relaxed">
-                Democratizar o acesso a tecnologia de gestao para locadoras de equipamentos
-                de todos os tamanhos, oferecendo uma plataforma completa, acessivel e facil de usar
-                que permita aos empresarios focarem no crescimento do negocio.
+                Democratizar o acesso à tecnologia de gestão para locadoras de equipamentos
+                de todos os tamanhos, oferecendo uma plataforma completa, acessível e fácil de usar
+                que permita aos empresários focarem no crescimento do negócio.
               </p>
             </div>
 
-            {/* Visao */}
+            {/* Visão */}
             <div className="p-8 rounded-2xl border border-white/10 bg-white/5">
               <div className="w-14 h-14 rounded-xl bg-cyan-500/10 flex items-center justify-center mb-6">
                 <Eye className="h-7 w-7 text-cyan-400" />
               </div>
-              <h2 className="text-2xl font-bold mb-4">Nossa Visao</h2>
+              <h2 className="text-2xl font-bold mb-4">Nossa Visão</h2>
               <p className="text-gray-400 leading-relaxed">
-                Ser a plataforma de gestao mais utilizada por locadoras de equipamentos no Brasil,
-                reconhecida pela inovacao, qualidade e pelo impacto positivo que geramos
-                na eficiencia operacional dos nossos clientes.
+                Ser a plataforma de gestão mais utilizada por locadoras de equipamentos no Brasil,
+                reconhecida pela inovação, qualidade e pelo impacto positivo que geramos
+                na eficiência operacional dos nossos clientes.
               </p>
             </div>
           </div>
@@ -131,9 +131,9 @@ export default function SobrePage() {
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-black/20">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Nossa Historia</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Nossa História</h2>
             <p className="text-gray-400 text-lg">
-              Uma jornada de inovacao e parceria
+              Uma jornada de inovação e parceria
             </p>
           </div>
 
@@ -161,7 +161,7 @@ export default function SobrePage() {
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">Nossos Valores</h2>
             <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-              Os principios que guiam todas as nossas decisoes
+              Os princípios que guiam todas as nossas decisões
             </p>
           </div>
 
@@ -191,9 +191,9 @@ export default function SobrePage() {
                 Por que escolher o ODuoLoc?
               </h2>
               <p className="text-gray-400 mb-8 leading-relaxed">
-                Desenvolvemos o ODuoLoc com base na experiencia real de locadoras de equipamentos.
+                Desenvolvemos o ODuoLoc com base na experiência real de locadoras de equipamentos.
                 Cada funcionalidade foi pensada para resolver problemas do dia a dia
-                e otimizar a operacao do seu negocio.
+                e otimizar a operação do seu negócio.
               </p>
               <ul className="space-y-3">
                 {differentials.map((item, i) => (
@@ -211,7 +211,7 @@ export default function SobrePage() {
                   <div className="text-6xl font-bold text-white mb-4">100%</div>
                   <div className="text-xl text-gray-300 mb-2">Focado em Locadoras</div>
                   <p className="text-gray-400 text-sm">
-                    Sistema desenvolvido exclusivamente para o mercado de locacao de equipamentos
+                    Sistema desenvolvido exclusivamente para o mercado de locação de equipamentos
                   </p>
                 </div>
               </div>

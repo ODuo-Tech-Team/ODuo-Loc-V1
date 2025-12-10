@@ -3,11 +3,11 @@ import { Boxes } from "lucide-react"
 import { FeaturePageTemplate } from "@/components/site"
 
 export const metadata: Metadata = {
-  title: "Gestao de Estoque | ODuoLoc",
-  description: "Controle de estoque avancado com rastreamento por quantidade ou numero de serie, movimentacoes e custos.",
+  title: "Gestão de Estoque | ODuoLoc",
+  description: "Controle de estoque avançado com rastreamento por quantidade ou número de série, movimentações e custos.",
   openGraph: {
-    title: "Gestao de Estoque | ODuoLoc",
-    description: "Tenha controle total do seu inventario de equipamentos.",
+    title: "Gestão de Estoque | ODuoLoc",
+    description: "Tenha controle total do seu inventário de equipamentos.",
   },
 }
 
@@ -15,73 +15,73 @@ export default function EstoquePage() {
   return (
     <FeaturePageTemplate
       icon={Boxes}
-      title="Gestao de Estoque"
-      subtitle="Controle total do seu inventario"
-      description="Sistema avancado de controle de estoque com rastreamento por quantidade ou numero de serie. Acompanhe movimentacoes, custos de aquisicao e status de cada unidade em tempo real."
-      screenshotPlaceholder="Tela de gestao de estoque"
+      title="Gestão de Estoque"
+      subtitle="Controle total do seu inventário"
+      description="Sistema avançado de controle de estoque com rastreamento por quantidade ou número de série. Acompanhe movimentações, custos de aquisição e status de cada unidade em tempo real."
+      screenshotPlaceholder="Tela de gestão de estoque"
       features={[
         {
           title: "Rastreamento por Quantidade",
-          description: "Ideal para equipamentos identicos. Controle quantidade total, disponivel, reservada e em manutencao."
+          description: "Ideal para equipamentos idênticos. Controle quantidade total, disponível, reservada e em manutenção."
         },
         {
-          title: "Rastreamento por Serie",
-          description: "Para equipamentos unicos. Cada unidade tem seu proprio numero de serie e historico individual."
+          title: "Rastreamento por Série",
+          description: "Para equipamentos únicos. Cada unidade tem seu próprio número de série e histórico individual."
         },
         {
-          title: "Movimentacoes de Estoque",
-          description: "Registre entradas, saidas, transferencias e ajustes. Historico completo de todas as movimentacoes."
+          title: "Movimentações de Estoque",
+          description: "Registre entradas, saídas, transferências e ajustes. Histórico completo de todas as movimentações."
         },
         {
           title: "Status por Unidade",
-          description: "Acompanhe o status de cada equipamento: disponivel, reservado, em manutencao, danificado."
+          description: "Acompanhe o status de cada equipamento: disponível, reservado, em manutenção, danificado."
         },
         {
-          title: "Custos de Aquisicao",
-          description: "Registre o valor de compra de cada equipamento. Calcule depreciacao e retorno sobre investimento."
+          title: "Custos de Aquisição",
+          description: "Registre o valor de compra de cada equipamento. Calcule depreciação e retorno sobre investimento."
         },
         {
           title: "Alertas de Estoque",
-          description: "Receba notificacoes quando o estoque atingir niveis minimos definidos por voce."
+          description: "Receba notificações quando o estoque atingir níveis mínimos definidos por você."
         }
       ]}
       benefits={[
-        "Visao em tempo real do inventario",
-        "Rastreamento individual por serie",
-        "Historico completo de movimentacoes",
-        "Controle de custos de aquisicao",
-        "Alertas automaticos de estoque baixo",
-        "Reducao de perdas e extravio"
+        "Visão em tempo real do inventário",
+        "Rastreamento individual por série",
+        "Histórico completo de movimentações",
+        "Controle de custos de aquisição",
+        "Alertas automáticos de estoque baixo",
+        "Redução de perdas e extravio"
       ]}
       availableIn={["starter", "professional", "enterprise"]}
       faqs={[
         {
-          question: "Qual a diferenca entre rastreamento por quantidade e por serie?",
-          answer: "Por quantidade e usado quando voce tem varios itens identicos (ex: 10 betoneiras iguais). Por serie e usado quando cada unidade e unica e precisa ser rastreada individualmente (ex: geradores com numero de serie)."
+          question: "Qual a diferença entre rastreamento por quantidade e por série?",
+          answer: "Por quantidade é usado quando você tem vários itens idênticos (ex: 10 betoneiras iguais). Por série é usado quando cada unidade é única e precisa ser rastreada individualmente (ex: geradores com número de série)."
         },
         {
           question: "Posso mudar o tipo de rastreamento depois?",
-          answer: "Sim, mas recomendamos definir corretamente desde o inicio para manter o historico consistente."
+          answer: "Sim, mas recomendamos definir corretamente desde o início para manter o histórico consistente."
         },
         {
-          question: "Como funciona o status de manutencao?",
-          answer: "Voce pode marcar unidades como 'em manutencao' para que nao aparecam como disponiveis para reserva ate serem liberadas."
+          question: "Como funciona o status de manutenção?",
+          answer: "Você pode marcar unidades como 'em manutenção' para que não apareçam como disponíveis para reserva até serem liberadas."
         },
         {
-          question: "O sistema calcula depreciacao automaticamente?",
-          answer: "Com os dados de custo de aquisicao, voce pode gerar relatorios de depreciacao baseados no uso ou tempo."
+          question: "O sistema calcula depreciação automaticamente?",
+          answer: "Com os dados de custo de aquisição, você pode gerar relatórios de depreciação baseados no uso ou tempo."
         }
       ]}
       relatedModules={[
         {
           title: "Equipamentos",
           href: "/funcionalidades/equipamentos",
-          description: "Cadastro e especificacoes dos equipamentos"
+          description: "Cadastro e especificações dos equipamentos"
         },
         {
-          title: "Relatorios",
+          title: "Relatórios",
           href: "/funcionalidades/relatorios",
-          description: "Analise de desempenho do estoque"
+          description: "Análise de desempenho do estoque"
         },
         {
           title: "Reservas",
