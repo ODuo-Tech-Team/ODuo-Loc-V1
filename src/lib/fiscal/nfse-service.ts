@@ -589,7 +589,8 @@ export class NfseService {
     }
 
     // Montar payload
-    const serieConfigured = tenant.fiscalConfig?.nfseSerie?.trim()
+    // IMPORTANTE: Série deve ser uppercase para evitar erros de autorização
+    const serieConfigured = tenant.fiscalConfig?.nfseSerie?.trim()?.toUpperCase()
     console.log('[NFS-e] Série configurada:', serieConfigured || '(não configurada - campo não será enviado)')
 
     const payload: NfsePayload = {
@@ -676,9 +677,11 @@ export class NfseService {
     if (tenant.fiscalConfig?.codigoServico) {
       // Detectar se o município usa Sistema Nacional
       const municipioUsaNacional = this.isMunicipioNacional(tenant.codigoMunicipio!)
+      // Passa o código do município para formatação correta (alguns usam 4 dígitos, outros 6)
       const { isNacional, code } = this.normalizeServiceCode(
         tenant.fiscalConfig.codigoServico,
-        municipioUsaNacional
+        municipioUsaNacional,
+        tenant.codigoMunicipio!  // Código IBGE do município para formato específico
       )
 
       if (isNacional) {
@@ -686,20 +689,19 @@ export class NfseService {
         payload.servico.codigo_tributacao_nacional_iss = code
         console.log(`[NFS-e] Sistema NACIONAL - código_tributacao_nacional_iss: ${code}`)
       } else {
-        // Sistema Municipal (LC 116/2003) - formato "XX.XX"
+        // Sistema Municipal (LC 116/2003)
+        // O código já vem no formato correto para o município (4 ou 6 dígitos)
         payload.servico.item_lista_servico = code
         console.log(`[NFS-e] Sistema MUNICIPAL - item_lista_servico: ${code}`)
 
         // CAXIAS DO SUL: Requer também o código tributário do município (campo cServ no XML)
         // Município usa sistema INFISC que precisa de:
-        // - item_lista_servico (cLCServ) = código LC 116/2003
+        // - item_lista_servico (cLCServ) = código LC 116/2003 (4 dígitos para Caxias)
         // - codigo_tributario_municipio (cServ) = código específico do município
         if (tenant.codigoMunicipio === '4305108') {
-          // Para Caxias do Sul, usar o mesmo código da LC 116 no campo cServ
-          // Formato: 4 dígitos (ex: 1401 para 14.01)
-          const codigoMunicipal = code.substring(0, 4)
-          payload.servico.codigo_tributario_municipio = codigoMunicipal
-          console.log(`[NFS-e] Caxias do Sul - codigo_tributario_municipio: ${codigoMunicipal}`)
+          // Para Caxias do Sul, usar o mesmo código (já está em 4 dígitos)
+          payload.servico.codigo_tributario_municipio = code
+          console.log(`[NFS-e] Caxias do Sul - codigo_tributario_municipio: ${code}`)
         }
       }
     } else {
@@ -901,15 +903,17 @@ export class NfseService {
    * - Exemplos: 990101 (Serviços sem incidência de ISSQN e ICMS)
    *
    * Sistema Municipal (LC 116/2003 - códigos NÃO começando com 99):
-   * - Formato: XXYYZZ (6 dígitos numéricos, sem pontos)
+   * - Formato PADRÃO: XXYYZZ (6 dígitos numéricos, sem pontos)
    *   - XX = Item da LC 116/2003 (2 dígitos)
    *   - YY = Subitem da LC 116/2003 (2 dígitos)
    *   - ZZ = Desdobro Nacional (2 dígitos, geralmente "00")
+   * - Formato 4 DÍGITOS (alguns municípios): XXYY (sem desdobro)
+   *   - Caxias do Sul (4305108), entre outros
    * - Campo: item_lista_servico
    * - Exemplos:
-   *   - "01.05" → 010500
+   *   - "01.05" → 010500 (padrão 6 dígitos)
+   *   - "14.01" → 1401 (Caxias do Sul - 4 dígitos)
    *   - "17.05" → 170500
-   *   - "010501" → 010501 (já no formato correto)
    *
    * ⚠️ MAPEAMENTOS TEMPORÁRIOS (até NT 005/2025 ser implementada):
    * - "17.05" -> "990101" (TEMPORÁRIO: deveria ser 990401 para Locação de bens móveis)
@@ -919,8 +923,13 @@ export class NfseService {
    *
    * @param code - Código do serviço configurado
    * @param forcaNacional - Força conversão para Sistema Nacional (quando município já migrou)
+   * @param codigoMunicipio - Código IBGE do município (opcional, para formatos específicos)
    */
-  private normalizeServiceCode(code: string, forcaNacional: boolean = false): { isNacional: boolean; code: string } {
+  private normalizeServiceCode(
+    code: string,
+    forcaNacional: boolean = false,
+    codigoMunicipio?: string
+  ): { isNacional: boolean; code: string } {
     // Mapeamento de códigos LC 116/2003 para Sistema Nacional NFS-e
     // ⚠️ ATENÇÃO: SOLUÇÃO TEMPORÁRIA - NT 005/2025 ainda não implementada
     // O código correto seria 990401 (Locação de bens móveis), mas ainda não está disponível no sistema.
@@ -935,9 +944,22 @@ export class NfseService {
       '010501': '990101', // TEMPORÁRIO: Locação de bens móveis (deveria ser 990401 quando NT 005 implementada)
     }
 
+    // Municípios que usam formato de 4 dígitos (sem desdobro "00")
+    // Esses municípios esperam o código no formato XXYY ao invés de XXYY00
+    const municipios4Digitos = [
+      '4305108', // Caxias do Sul - RS
+      // Adicionar outros municípios conforme necessário
+    ]
+
     // Remove espaços e extrai apenas números
     const cleanCode = code.trim()
     const numericOnly = cleanCode.replace(/\D/g, '')
+
+    // Verifica se o município usa formato de 4 dígitos
+    const usa4Digitos = codigoMunicipio && municipios4Digitos.includes(codigoMunicipio)
+    if (usa4Digitos) {
+      console.log(`[NFS-e] Município ${codigoMunicipio} usa formato de 4 dígitos para item_lista_servico`)
+    }
 
     // Se município força Nacional, verificar se precisa converter
     if (forcaNacional) {
@@ -970,18 +992,38 @@ export class NfseService {
 
     // Se tem formato XX.XX ou XXXX (4 dígitos), é Municipal LC 116/2003
     if (cleanCode.includes('.')) {
-      // Formato XX.XX - converter para XXYY00 (6 dígitos)
-      // Ex: 01.05 -> 010500
-      const municipalCode = numericOnly.padEnd(6, '0').substring(0, 6)
-      console.log(`[NFS-e] Código ${cleanCode} convertido para formato Municipal 6 dígitos: ${municipalCode}`)
-      return { isNacional: false, code: municipalCode }
+      // Formato XX.XX
+      if (usa4Digitos) {
+        // Para municípios que usam 4 dígitos, manter sem o desdobro "00"
+        // Ex: 14.01 -> 1401
+        console.log(`[NFS-e] Código ${cleanCode} convertido para formato Municipal 4 dígitos: ${numericOnly}`)
+        return { isNacional: false, code: numericOnly }
+      } else {
+        // Formato padrão - converter para XXYY00 (6 dígitos)
+        // Ex: 01.05 -> 010500
+        const municipalCode = numericOnly.padEnd(6, '0').substring(0, 6)
+        console.log(`[NFS-e] Código ${cleanCode} convertido para formato Municipal 6 dígitos: ${municipalCode}`)
+        return { isNacional: false, code: municipalCode }
+      }
     } else if (numericOnly.length === 4) {
-      // Converter 0105 para 010500 (adicionar 00 do desdobro)
-      const municipalCode = numericOnly + '00'
-      console.log(`[NFS-e] Código ${cleanCode} convertido para formato Municipal 6 dígitos: ${municipalCode}`)
-      return { isNacional: false, code: municipalCode }
+      if (usa4Digitos) {
+        // Para municípios que usam 4 dígitos, manter como está
+        console.log(`[NFS-e] Código ${cleanCode} mantido em formato Municipal 4 dígitos: ${numericOnly}`)
+        return { isNacional: false, code: numericOnly }
+      } else {
+        // Converter 0105 para 010500 (adicionar 00 do desdobro)
+        const municipalCode = numericOnly + '00'
+        console.log(`[NFS-e] Código ${cleanCode} convertido para formato Municipal 6 dígitos: ${municipalCode}`)
+        return { isNacional: false, code: municipalCode }
+      }
     } else if (numericOnly.length === 6 && !numericOnly.startsWith('99')) {
       // 6 dígitos mas não começa com 99 - é Municipal (já no formato correto)
+      if (usa4Digitos) {
+        // Para municípios que usam 4 dígitos, remover os últimos 2 dígitos (desdobro)
+        const code4Digits = numericOnly.substring(0, 4)
+        console.log(`[NFS-e] Código ${numericOnly} convertido para formato Municipal 4 dígitos: ${code4Digits}`)
+        return { isNacional: false, code: code4Digits }
+      }
       console.log(`[NFS-e] Código detectado como MUNICIPAL (LC 116/2003): ${numericOnly}`)
       return { isNacional: false, code: numericOnly }
     }
