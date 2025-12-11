@@ -703,16 +703,13 @@ export class NfseService {
         payload.servico.item_lista_servico = code
         console.log(`[NFS-e] Sistema MUNICIPAL - item_lista_servico: ${code}`)
 
-        // CAXIAS DO SUL: Requer também o código tributário do município (campo cServ no XML)
-        // Município usa sistema INFISC que precisa de:
-        // - item_lista_servico (cLCServ) = código LC 116/2003 em 4 dígitos (1401)
-        // - codigo_tributario_municipio (cServ) = código específico do município (numérico: 1401)
-        // NOTA: O suporte Focus NFe informou que instruíram a API a ignorar esses campos e usar o cadastro
+        // CAXIAS DO SUL: NÃO enviar codigo_tributario_municipio
+        // O código LC 116/2003 (cLCServ) é 1401, mas o código da prefeitura (cServ) é diferente (ex: 1519)
+        // O suporte Focus NFe informou que instruíram a API a ignorar esse campo e usar o do cadastro do prestador
+        // Referência: XML de NFS-e autorizada mostra cServ=1519, cLCServ=1401
         if (tenant.codigoMunicipio === '4305108') {
-          // Para Caxias do Sul, usar código numérico sem ponto no campo cServ
-          const codigoNumerico = code.replace(/\D/g, '') // Garante apenas números: "14.01" -> "1401" ou "1401" -> "1401"
-          payload.servico.codigo_tributario_municipio = codigoNumerico
-          console.log(`[NFS-e] Caxias do Sul - codigo_tributario_municipio: ${codigoNumerico}`)
+          console.log(`[NFS-e] Caxias do Sul - NÃO enviando codigo_tributario_municipio (Focus NFe usará o cadastro)`)
+          // NÃO definir payload.servico.codigo_tributario_municipio
         }
       }
     } else {
