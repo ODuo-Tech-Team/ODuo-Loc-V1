@@ -870,9 +870,10 @@ model TenantFiscalConfig {
   nfseProximoNumero Int    @default(1)
 
   // Padrões do serviço
-  codigoServico String? // Código LC 116
-  aliquotaIss   Float   @default(0)
-  issRetido     Boolean @default(false)
+  codigoServico            String? // Código LC 116/2003 (cLCServ) - Ex: 1401
+  codigoTributarioMunicipal String? // Código específico do município (cServ) - Ex: 1519 para Caxias do Sul
+  aliquotaIss              Float   @default(0)
+  issRetido                Boolean @default(false)
 
   // Template de descrição do serviço (suporta variáveis)
   descricaoTemplate String? @db.Text

@@ -53,6 +53,7 @@ interface FiscalConfig {
   nfseSerie: string
   nfseProximoNumero: number
   codigoServico: string
+  codigoTributarioMunicipal: string
   aliquotaIss: number
   issRetido: boolean
 
@@ -98,6 +99,7 @@ export default function ConfiguracaoFiscalPage() {
     nfseSerie: "1",
     nfseProximoNumero: 1,
     codigoServico: "",
+    codigoTributarioMunicipal: "",
     aliquotaIss: 0,
     issRetido: false,
     descricaoTemplate: DEFAULT_TEMPLATE,
@@ -128,6 +130,7 @@ export default function ConfiguracaoFiscalPage() {
           nfseSerie: data.nfseSerie || "1",
           nfseProximoNumero: data.nfseProximoNumero || 1,
           codigoServico: data.codigoServico || "",
+          codigoTributarioMunicipal: data.codigoTributarioMunicipal || "",
           aliquotaIss: data.aliquotaIss || 0,
           issRetido: data.issRetido || false,
           descricaoTemplate: data.descricaoTemplate || DEFAULT_TEMPLATE,
@@ -153,6 +156,7 @@ export default function ConfiguracaoFiscalPage() {
         focusNfeEnvironment: config.focusNfeEnvironment,
         nfseSerie: config.nfseSerie,
         codigoServico: config.codigoServico,
+        codigoTributarioMunicipal: config.codigoTributarioMunicipal,
         aliquotaIss: config.aliquotaIss,
         issRetido: config.issRetido,
         descricaoTemplate: config.descricaoTemplate,
@@ -524,14 +528,31 @@ export default function ConfiguracaoFiscalPage() {
                   </Label>
                   <Input
                     id="codigoServico"
-                    placeholder="Ex: 17.05"
+                    placeholder="Ex: 14.01"
                     value={config.codigoServico}
                     onChange={(e) =>
                       setConfig({ ...config, codigoServico: e.target.value })
                     }
                   />
                   <p className="text-xs text-muted-foreground">
-                    Código da lista de serviços anexa à LC 116/2003
+                    Código da lista de serviços anexa à LC 116/2003 (cLCServ)
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="codigoTributarioMunicipal">
+                    Código Tributário Municipal
+                  </Label>
+                  <Input
+                    id="codigoTributarioMunicipal"
+                    placeholder="Ex: 1519"
+                    value={config.codigoTributarioMunicipal}
+                    onChange={(e) =>
+                      setConfig({ ...config, codigoTributarioMunicipal: e.target.value })
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Código específico do seu município (cServ). Consulte a prefeitura.
                   </p>
                 </div>
 

@@ -40,6 +40,7 @@ export async function GET() {
             nfseSerie: true,
             nfseProximoNumero: true,
             codigoServico: true,
+            codigoTributarioMunicipal: true,
             aliquotaIss: true,
             issRetido: true,
             descricaoTemplate: true,
@@ -70,6 +71,7 @@ export async function GET() {
       nfseSerie: tenant.fiscalConfig?.nfseSerie || '1',
       nfseProximoNumero: tenant.fiscalConfig?.nfseProximoNumero || 1,
       codigoServico: tenant.fiscalConfig?.codigoServico,
+      codigoTributarioMunicipal: tenant.fiscalConfig?.codigoTributarioMunicipal,
       aliquotaIss: tenant.fiscalConfig?.aliquotaIss || 0,
       issRetido: tenant.fiscalConfig?.issRetido || false,
 
@@ -110,6 +112,7 @@ export async function PUT(request: NextRequest) {
       focusNfeEnvironment,
       nfseSerie,
       codigoServico,
+      codigoTributarioMunicipal,
       aliquotaIss,
       issRetido,
       descricaoTemplate,
@@ -160,6 +163,10 @@ export async function PUT(request: NextRequest) {
 
     if (codigoServico !== undefined) {
       fiscalConfigData.codigoServico = codigoServico || null
+    }
+
+    if (codigoTributarioMunicipal !== undefined) {
+      fiscalConfigData.codigoTributarioMunicipal = codigoTributarioMunicipal || null
     }
 
     if (aliquotaIss !== undefined) {
