@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { getUazapiClient } from "@/lib/whatsapp"
+import { getUazapiClient, normalizeInstanceStatus } from "@/lib/whatsapp"
 import { WhatsAppInstanceStatus } from "@prisma/client"
 
 // GET - Obter QR Code atual
@@ -58,8 +58,11 @@ export async function GET() {
       if (result.qrcode) {
         updateData.qrCode = result.qrcode
       }
-      if (result.status && ["DISCONNECTED", "CONNECTING", "CONNECTED", "BANNED"].includes(result.status)) {
-        updateData.status = result.status as WhatsAppInstanceStatus
+
+      // Normalizar status da Uazapi (lowercase) para nosso enum (uppercase)
+      const normalizedStatus = normalizeInstanceStatus(result.status)
+      if (normalizedStatus) {
+        updateData.status = normalizedStatus
       }
 
       if (Object.keys(updateData).length > 0) {
@@ -70,7 +73,7 @@ export async function GET() {
       }
 
       return NextResponse.json({
-        status: result.status || instance.status,
+        status: normalizedStatus || instance.status,
         qrCode: result.qrcode || instance.qrCode,
         phoneNumber: instance.phoneNumber,
       })

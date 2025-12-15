@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { getUazapiClient } from "@/lib/whatsapp"
+import { getUazapiClient, normalizeInstanceStatus } from "@/lib/whatsapp"
 
 // GET - Obter status da instância do tenant
 export async function GET() {
@@ -191,11 +191,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Normalizar status da Uazapi (lowercase) para nosso enum (uppercase)
+    const normalizedStatus = normalizeInstanceStatus(connectResult.status) || "CONNECTING"
+
     // Atualizar status e QR
     await prisma.whatsAppInstance.update({
       where: { id: instance.id },
       data: {
-        status: connectResult.status || "CONNECTING",
+        status: normalizedStatus,
         qrCode: connectResult.qrcode || null,
       },
     })
@@ -204,7 +207,7 @@ export async function POST(request: NextRequest) {
       success: true,
       instance: {
         ...instance,
-        status: connectResult.status || "CONNECTING",
+        status: normalizedStatus,
         qrCode: connectResult.qrcode,
       },
     })

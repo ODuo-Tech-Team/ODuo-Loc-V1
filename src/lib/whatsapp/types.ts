@@ -264,3 +264,20 @@ export const MESSAGE_STATUS_MAP: Record<number, "PENDING" | "SENT" | "DELIVERED"
   4: "READ",
   5: "READ", // played (para áudio/vídeo)
 }
+
+// Normaliza status da Uazapi (lowercase) para nosso enum (uppercase)
+export function normalizeInstanceStatus(status: string | undefined): InstanceStatus | null {
+  if (!status) return null
+
+  const normalized = status.toUpperCase()
+
+  if (["DISCONNECTED", "CONNECTING", "CONNECTED", "BANNED"].includes(normalized)) {
+    return normalized as InstanceStatus
+  }
+
+  // Mapeamentos especiais
+  if (normalized === "OPEN" || normalized === "ONLINE") return "CONNECTED"
+  if (normalized === "CLOSE" || normalized === "OFFLINE") return "DISCONNECTED"
+
+  return null
+}
