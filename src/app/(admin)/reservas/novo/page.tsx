@@ -21,7 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ArrowLeft, Save, Calculator, MapPin, Loader2, Percent, Truck, AlertTriangle, Calendar } from "lucide-react"
+import { ArrowLeft, Save, Calculator, MapPin, Loader2, Percent, Truck, AlertTriangle, Calendar, Package, Check } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -74,6 +75,15 @@ interface Equipment {
   pricePerDay: number
   availableStock: number
   status: string
+  trackingType: "SERIALIZED" | "QUANTITY"
+}
+
+interface AvailableUnit {
+  id: string
+  serialNumber: string
+  internalCode: string | null
+  label: string
+  notes: string | null
 }
 
 interface CustomerSite {
@@ -120,6 +130,11 @@ export default function NovaReservaPage() {
   const [subtotal, setSubtotal] = useState<number>(0)
   const [discountAmount, setDiscountAmount] = useState<number>(0)
   const [freightAmount, setFreightAmount] = useState<number>(0)
+
+  // Estados para unidades serializadas
+  const [availableUnits, setAvailableUnits] = useState<AvailableUnit[]>([])
+  const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>([])
+  const [loadingUnits, setLoadingUnits] = useState(false)
 
   // Dialogs de criação rápida
   const [newCustomerDialogOpen, setNewCustomerDialogOpen] = useState(false)
@@ -233,15 +248,46 @@ export default function NovaReservaPage() {
     }
   }, [watchCustomerId, fetchCustomerSites])
 
+  // Função para carregar unidades disponíveis
+  const fetchAvailableUnits = useCallback(async (equipmentId: string, startDate?: string, endDate?: string) => {
+    setLoadingUnits(true)
+    try {
+      let url = `/api/equipments/${equipmentId}/available-units`
+      if (startDate && endDate) {
+        url += `?startDate=${startDate}&endDate=${endDate}`
+      }
+      const response = await fetch(url)
+      if (response.ok) {
+        const data = await response.json()
+        setAvailableUnits(data.units || [])
+      }
+    } catch (error) {
+      console.error("Error fetching available units:", error)
+      setAvailableUnits([])
+    } finally {
+      setLoadingUnits(false)
+    }
+  }, [])
+
   // Atualizar equipamento selecionado
   useEffect(() => {
     if (watchEquipmentId) {
       const equipment = equipments.find((e) => e.id === watchEquipmentId)
       setSelectedEquipment(equipment || null)
+
+      // Se for serializado, carregar unidades disponíveis
+      if (equipment?.trackingType === "SERIALIZED") {
+        fetchAvailableUnits(watchEquipmentId, watchStartDate, watchEndDate)
+      } else {
+        setAvailableUnits([])
+        setSelectedUnitIds([])
+      }
     } else {
       setSelectedEquipment(null)
+      setAvailableUnits([])
+      setSelectedUnitIds([])
     }
-  }, [watchEquipmentId, equipments])
+  }, [watchEquipmentId, equipments, watchStartDate, watchEndDate, fetchAvailableUnits])
 
   // Calcular preço com desconto e frete
   useEffect(() => {
@@ -330,6 +376,7 @@ export default function NovaReservaPage() {
       pricePerDay: equipment.pricePerDay,
       availableStock: equipment.availableStock,
       status: "AVAILABLE",
+      trackingType: (equipment as Equipment & { trackingType?: string }).trackingType || "QUANTITY",
     }
     setEquipments(prev => [newEquipment, ...prev])
     setValue("equipmentId", equipment.id)
@@ -338,6 +385,12 @@ export default function NovaReservaPage() {
 
   const onSubmit = async (data: BookingForm) => {
     try {
+      // Validar seleção de unidades para equipamentos serializados
+      if (selectedEquipment?.trackingType === "SERIALIZED" && selectedUnitIds.length === 0) {
+        toast.error("Selecione pelo menos uma unidade para locar")
+        return
+      }
+
       setLoading(true)
 
       const cleanData = {
@@ -354,6 +407,10 @@ export default function NovaReservaPage() {
         freightRegionId: data.freightRegionId || null,
         cancellationFeePercent: data.cancellationFeePercent || null,
         lateFeePercent: data.lateFeePercent || null,
+        // Adicionar unidades selecionadas (para equipamentos serializados)
+        selectedUnitIds: selectedEquipment?.trackingType === "SERIALIZED" ? selectedUnitIds : undefined,
+        // Quantidade baseada nas unidades selecionadas ou 1 para não-serializados
+        quantity: selectedEquipment?.trackingType === "SERIALIZED" ? selectedUnitIds.length : 1,
       }
 
       const response = await fetch("/api/bookings", {
@@ -523,6 +580,88 @@ export default function NovaReservaPage() {
                 </p>
               )}
             </div>
+
+            {/* Seleção de Unidades (para equipamentos serializados) */}
+            {selectedEquipment?.trackingType === "SERIALIZED" && (
+              <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-primary" />
+                  <Label className="font-medium">
+                    Selecionar Unidades <span className="text-destructive">*</span>
+                  </Label>
+                  <HelpTooltip content="Este equipamento possui controle por número de série. Selecione quais unidades serão locadas." />
+                </div>
+
+                {!watchStartDate || !watchEndDate ? (
+                  <p className="text-sm text-muted-foreground">
+                    Selecione o período da locação para ver as unidades disponíveis.
+                  </p>
+                ) : loadingUnits ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Carregando unidades disponíveis...
+                  </div>
+                ) : availableUnits.length === 0 ? (
+                  <p className="text-sm text-amber-600">
+                    Nenhuma unidade disponível para o período selecionado.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      {availableUnits.length} unidade(s) disponível(is) para o período. Selecione as unidades:
+                    </p>
+                    <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+                      {availableUnits.map((unit) => (
+                        <div
+                          key={unit.id}
+                          className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                            selectedUnitIds.includes(unit.id)
+                              ? "border-primary bg-primary/5"
+                              : "hover:bg-muted/50"
+                          }`}
+                          onClick={() => {
+                            setSelectedUnitIds((prev) =>
+                              prev.includes(unit.id)
+                                ? prev.filter((id) => id !== unit.id)
+                                : [...prev, unit.id]
+                            )
+                          }}
+                        >
+                          <Checkbox
+                            checked={selectedUnitIds.includes(unit.id)}
+                            onCheckedChange={(checked) => {
+                              setSelectedUnitIds((prev) =>
+                                checked
+                                  ? [...prev, unit.id]
+                                  : prev.filter((id) => id !== unit.id)
+                              )
+                            }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">
+                              {unit.serialNumber}
+                            </p>
+                            {unit.internalCode && (
+                              <p className="text-xs text-muted-foreground truncate">
+                                Código: {unit.internalCode}
+                              </p>
+                            )}
+                          </div>
+                          {selectedUnitIds.includes(unit.id) && (
+                            <Check className="h-4 w-4 text-primary shrink-0" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {selectedUnitIds.length > 0 && (
+                      <p className="text-sm font-medium text-primary">
+                        {selectedUnitIds.length} unidade(s) selecionada(s)
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 

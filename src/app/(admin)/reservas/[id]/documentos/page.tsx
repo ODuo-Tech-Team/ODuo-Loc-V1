@@ -49,13 +49,14 @@ interface Booking {
 
 interface Invoice {
   id: string
-  invoiceNumber: string
+  internalRef: string
+  numero: string | null
   status: string
-  totalAmount: number
-  issuedAt: string
-  paidAt: string | null
-  nfseNumber: string | null
-  nfseUrl: string | null
+  valorTotal: number
+  emittedAt: string | null
+  pdfUrl: string | null
+  xmlUrl: string | null
+  createdAt: string
 }
 
 export default function DocumentosOrcamentoPage({
@@ -86,11 +87,11 @@ export default function DocumentosOrcamentoPage({
       const bookingData = await bookingRes.json()
       setBooking(bookingData)
 
-      // Buscar invoices
-      const invoicesRes = await fetch(`/api/bookings/${resolvedParams.id}/invoices`)
+      // Buscar invoices (NFS-e)
+      const invoicesRes = await fetch(`/api/bookings/${resolvedParams.id}/invoice`)
       if (invoicesRes.ok) {
         const invoicesData = await invoicesRes.json()
-        setInvoices(invoicesData || [])
+        setInvoices(invoicesData.invoices || [])
       }
     } catch (error) {
       console.error("Erro ao carregar dados:", error)
@@ -362,7 +363,7 @@ export default function DocumentosOrcamentoPage({
             <Table>
               <TableHeader>
                 <TableRow className="border-zinc-800">
-                  <TableHead>Número</TableHead>
+                  <TableHead>Ref. Interna</TableHead>
                   <TableHead>NFS-e</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Valor</TableHead>
@@ -373,27 +374,37 @@ export default function DocumentosOrcamentoPage({
               <TableBody>
                 {invoices.map((invoice) => (
                   <TableRow key={invoice.id} className="border-zinc-800">
-                    <TableCell className="font-medium">
-                      {invoice.invoiceNumber}
+                    <TableCell className="font-medium font-mono text-xs">
+                      {invoice.internalRef}
                     </TableCell>
                     <TableCell>
-                      {invoice.nfseNumber || "-"}
+                      {invoice.numero || "-"}
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={invoice.status === "PAID" ? "default" : "secondary"}
+                        variant={
+                          invoice.status === "AUTHORIZED" ? "default" :
+                          invoice.status === "REJECTED" || invoice.status === "ERROR" ? "destructive" :
+                          invoice.status === "CANCELLED" ? "outline" :
+                          "secondary"
+                        }
                       >
-                        {invoice.status === "PAID" ? "Pago" : "Pendente"}
+                        {invoice.status === "AUTHORIZED" ? "Autorizada" :
+                         invoice.status === "PENDING" ? "Pendente" :
+                         invoice.status === "PROCESSING" ? "Processando" :
+                         invoice.status === "REJECTED" ? "Rejeitada" :
+                         invoice.status === "CANCELLED" ? "Cancelada" :
+                         invoice.status === "ERROR" ? "Erro" : invoice.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>{formatCurrency(invoice.totalAmount)}</TableCell>
-                    <TableCell>{formatDate(invoice.issuedAt)}</TableCell>
+                    <TableCell>{formatCurrency(invoice.valorTotal)}</TableCell>
+                    <TableCell>{invoice.emittedAt ? formatDate(invoice.emittedAt) : formatDate(invoice.createdAt)}</TableCell>
                     <TableCell className="text-right">
-                      {invoice.nfseUrl && (
+                      {invoice.pdfUrl && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => window.open(invoice.nfseUrl!, "_blank")}
+                          onClick={() => window.open(invoice.pdfUrl!, "_blank")}
                         >
                           <ExternalLink className="h-4 w-4" />
                         </Button>

@@ -67,6 +67,8 @@ const createBookingSchema = z.object({
   // Suporte legado (único equipamento)
   equipmentId: z.string().optional(),
   totalPrice: z.number().optional(),
+  quantity: z.number().int().positive().optional(), // Quantidade (legado)
+  selectedUnitIds: z.array(z.string()).optional(), // Unidades selecionadas (legado, para serializados)
   // Novo sistema multi-item
   items: z.array(bookingItemSchema).optional(),
   // Status inicial do orçamento (default: PENDING)
@@ -121,6 +123,8 @@ export async function POST(request: NextRequest) {
       notes,
       equipmentId,
       totalPrice,
+      quantity,
+      selectedUnitIds,
       items,
       status,
     } = validation.data
@@ -174,13 +178,18 @@ export async function POST(request: NextRequest) {
         )
       }
 
+      // Determinar quantidade: para serializados, usar número de unidades selecionadas
+      const itemQuantity = selectedUnitIds?.length || quantity || 1
+
       // Calcular preço usando os períodos de locação
-      const priceResult = await calculateRentalPrice(equipmentId, days, 1)
+      const priceResult = await calculateRentalPrice(equipmentId, days, itemQuantity)
 
       bookingItems.push({
         equipmentId,
-        quantity: 1,
+        quantity: itemQuantity,
         unitPrice: priceResult.pricePerDay,
+        // Passar unidades selecionadas para equipamentos serializados
+        selectedUnitIds: selectedUnitIds,
       })
     }
 
@@ -308,7 +317,7 @@ export async function POST(request: NextRequest) {
         const equipment = equipments.find(e => e.id === item.equipmentId)!
         const prices = itemPrices.get(item.equipmentId)!
 
-        await tx.bookingItem.create({
+        const bookingItem = await tx.bookingItem.create({
           data: {
             bookingId: newBooking.id,
             equipmentId: item.equipmentId,
@@ -318,6 +327,25 @@ export async function POST(request: NextRequest) {
             notes: item.notes,
           },
         })
+
+        // Se houver unidades selecionadas (equipamento serializado), criar BookingItemUnit
+        if (item.selectedUnitIds && item.selectedUnitIds.length > 0) {
+          for (const unitId of item.selectedUnitIds) {
+            // Criar vínculo entre o item e a unidade
+            await tx.bookingItemUnit.create({
+              data: {
+                bookingItemId: bookingItem.id,
+                unitId: unitId,
+              },
+            })
+
+            // Atualizar status da unidade para RENTED
+            await tx.equipmentUnit.update({
+              where: { id: unitId },
+              data: { status: "RENTED" },
+            })
+          }
+        }
 
         // Atualizar estoque do equipamento
         await tx.equipment.update({

@@ -48,6 +48,8 @@ export const bookingItemSchema = z.object({
   quantity: z.number().int().positive("Quantidade deve ser maior que zero"),
   unitPrice: z.number().positive("Preço unitário deve ser maior que zero").optional(),
   notes: z.string().optional(),
+  // Para equipamentos serializados: IDs das unidades selecionadas
+  selectedUnitIds: z.array(z.string()).optional(),
 })
 
 export type BookingItemInput = z.infer<typeof bookingItemSchema>
