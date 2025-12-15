@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { sendEmail, emailTemplates } from "@/lib/email"
+import { sendEmail, emailTemplates, EMAIL_FROM } from "@/lib/email"
 import { processTemplate, type TemplateData } from "@/lib/template-variables"
 import { DEFAULT_CONTRACT_TEMPLATE, DEFAULT_RECEIPT_TEMPLATE } from "@/lib/default-templates"
 
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
         to: customEmail.to,
         subject: customEmail.subject,
         html: customEmail.html,
-        from: `${tenant.name} <noreply@resend.dev>`,
+        from: EMAIL_FROM.DOCUMENTOS,
         replyTo: tenant.email || undefined,
       })
 
@@ -258,7 +258,7 @@ export async function POST(request: NextRequest) {
       to: booking.customer.email,
       subject: emailData.subject,
       html: emailData.html,
-      from: `${tenant.name} <noreply@resend.dev>`,
+      from: EMAIL_FROM.DOCUMENTOS,
       replyTo: tenant.email || undefined,
     })
 
@@ -270,7 +270,7 @@ export async function POST(request: NextRequest) {
     let errorMessage = "Erro ao enviar email"
     if (error?.message) {
       if (error.message.includes("domain")) {
-        errorMessage = "Domínio de email não verificado no Resend. Use noreply@resend.dev ou verifique seu domínio."
+        errorMessage = "Erro de configuração do serviço de email. Verifique as configurações do Resend."
       } else if (error.message.includes("API key")) {
         errorMessage = "Chave de API do Resend inválida"
       } else {
