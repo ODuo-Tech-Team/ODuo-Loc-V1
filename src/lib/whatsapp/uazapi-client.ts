@@ -135,15 +135,6 @@ export class UazapiClient {
   }
 
   /**
-   * Obtém o QR Code atual de uma instância
-   */
-  async getQRCode(instanceId: string): Promise<QRCodeResponse> {
-    return this.request<QRCodeResponse>(`/instance/qrcode/${instanceId}`, {
-      method: "GET",
-    })
-  }
-
-  /**
    * Obtém o status de conexão de uma instância
    */
   async getConnectionStatus(instanceId: string): Promise<ConnectionStatusResponse> {
