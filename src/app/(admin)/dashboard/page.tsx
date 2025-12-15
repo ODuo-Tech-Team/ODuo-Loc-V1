@@ -1,8 +1,7 @@
-"use client"
-
-import { useMemo } from "react"
 import Link from "next/link"
-import { useSession } from "next-auth/react"
+import { auth } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
+import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -12,10 +11,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Package, Users, Calendar, TrendingUp, Loader2, Plus, ArrowRight } from "lucide-react"
-import { useDashboardStats } from "@/hooks/useQueries"
+import { Package, Users, Calendar, TrendingUp, Plus, ArrowRight } from "lucide-react"
 
-// Constantes movidas para fora do componente (evita recriação a cada render)
 const STATUS_LABELS = {
   PENDING: "Pendente",
   CONFIRMED: "Confirmada",
@@ -37,21 +34,80 @@ const formatCurrency = (value: number) => {
   }).format(value)
 }
 
-const formatDate = (date: string) => {
+const formatDate = (date: Date) => {
   return new Date(date).toLocaleDateString("pt-BR")
 }
 
-export default function DashboardPage() {
-  const { data: session } = useSession()
-  const { data: stats, isLoading: loading } = useDashboardStats()
+// Server-side data fetching - eliminates client-side fetch waterfall
+async function getDashboardData(tenantId: string) {
+  const now = new Date()
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
+  const [
+    totalEquipments,
+    availableEquipments,
+    totalCustomers,
+    activeBookings,
+    pendingBookings,
+    thisMonthRevenue,
+    totalRevenue,
+    recentBookings,
+  ] = await Promise.all([
+    prisma.equipment.count({ where: { tenantId } }),
+    prisma.equipment.count({ where: { tenantId, status: "AVAILABLE" } }),
+    prisma.customer.count({ where: { tenantId } }),
+    prisma.booking.count({ where: { tenantId, status: "CONFIRMED" } }),
+    prisma.booking.count({ where: { tenantId, status: "PENDING" } }),
+    prisma.booking.aggregate({
+      where: { tenantId, status: "COMPLETED", createdAt: { gte: firstDayOfMonth } },
+      _sum: { totalPrice: true },
+    }),
+    prisma.booking.aggregate({
+      where: { tenantId, status: "COMPLETED" },
+      _sum: { totalPrice: true },
+    }),
+    prisma.booking.findMany({
+      where: { tenantId },
+      include: {
+        customer: { select: { name: true } },
+        equipment: { select: { name: true } },
+        items: { include: { equipment: { select: { name: true } } }, take: 1 },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    }),
+  ])
+
+  return {
+    equipment: { total: totalEquipments, available: availableEquipments },
+    customers: { total: totalCustomers },
+    bookings: { active: activeBookings, pending: pendingBookings },
+    revenue: {
+      thisMonth: Number(thisMonthRevenue._sum.totalPrice || 0),
+      total: Number(totalRevenue._sum.totalPrice || 0),
+    },
+    recentBookings: recentBookings.map((b) => ({
+      id: b.id,
+      startDate: b.startDate,
+      endDate: b.endDate,
+      totalPrice: Number(b.totalPrice),
+      status: b.status,
+      customer: { name: b.customer.name },
+      equipment: { name: b.equipment?.name || b.items[0]?.equipment?.name || "Equipamento" },
+    })),
   }
+}
+
+export default async function DashboardPage() {
+  const session = await auth()
+
+  if (!session?.user?.tenantId) {
+    redirect("/login")
+  }
+
+  const stats = await getDashboardData(session.user.tenantId)
+  const userName = session.user.name?.split(" ")[0] || "Usuário"
+  const tenantName = session.user.tenantName || "sua empresa"
 
   return (
     <div className="p-4 sm:p-8 space-y-8 max-w-7xl mx-auto">
@@ -59,10 +115,10 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 tracking-tight">
-            Olá, {session?.user?.name?.split(" ")[0]}
+            Olá, {userName}
           </h1>
           <p className="text-muted-foreground mt-1 text-lg">
-            Visão geral da {session?.user?.tenantName}
+            Visão geral da {tenantName}
           </p>
         </div>
         <div className="flex gap-3">
@@ -86,9 +142,9 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-white">{stats?.equipment.total || 0}</div>
+            <div className="text-3xl font-bold text-white">{stats.equipment.total}</div>
             <p className="text-sm text-blue-400 mt-1 font-medium">
-              {stats?.equipment.available || 0} disponíveis agora
+              {stats.equipment.available} disponíveis agora
             </p>
           </CardContent>
         </Card>
@@ -103,7 +159,7 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-white">{stats?.customers.total || 0}</div>
+            <div className="text-3xl font-bold text-white">{stats.customers.total}</div>
             <p className="text-sm text-cyan-400 mt-1 font-medium">
               Base ativa
             </p>
@@ -120,9 +176,9 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-white">{stats?.bookings.active || 0}</div>
+            <div className="text-3xl font-bold text-white">{stats.bookings.active}</div>
             <p className="text-sm text-amber-400 mt-1 font-medium">
-              {stats?.bookings.pending || 0} pendentes de aprovação
+              {stats.bookings.pending} pendentes de aprovação
             </p>
           </CardContent>
         </Card>
@@ -138,10 +194,10 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">
-              {formatCurrency(stats?.revenue.thisMonth || 0)}
+              {formatCurrency(stats.revenue.thisMonth)}
             </div>
             <p className="text-sm text-emerald-400 mt-1 font-medium">
-              Total: {formatCurrency(stats?.revenue.total || 0)}
+              Total: {formatCurrency(stats.revenue.total)}
             </p>
           </CardContent>
         </Card>
@@ -165,19 +221,18 @@ export default function DashboardPage() {
             </Link>
           </CardHeader>
           <CardContent>
-            {stats?.recentBookings && stats.recentBookings.length > 0 ? (
+            {stats.recentBookings.length > 0 ? (
               <div className="space-y-3">
                 {stats.recentBookings.map((booking) => (
-                  <div
+                  <article
                     key={booking.id}
                     className="group p-4 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 transition-all duration-300"
                   >
                     {/* Mobile Layout */}
                     <div className="flex flex-col gap-3 sm:hidden">
-                      {/* Header: Nome + Badge */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className="h-9 w-9 flex-shrink-0 rounded-full bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center border border-white/10">
+                          <div className="h-9 w-9 flex-shrink-0 rounded-full bg-gradient-to-br from-blue-500/20 to-cyan-500/20 grid place-items-center border border-white/10">
                             <Calendar className="h-4 w-4 text-blue-400" />
                           </div>
                           <div className="min-w-0">
@@ -194,8 +249,6 @@ export default function DashboardPage() {
                           {STATUS_LABELS[booking.status as keyof typeof STATUS_LABELS]}
                         </Badge>
                       </div>
-
-                      {/* Footer: Data + Preço */}
                       <div className="flex items-center justify-between pt-2 border-t border-white/5">
                         <div className="text-sm">
                           <span className="text-muted-foreground">{formatDate(booking.startDate)}</span>
@@ -211,7 +264,7 @@ export default function DashboardPage() {
                     {/* Desktop Layout */}
                     <div className="hidden sm:flex sm:items-center justify-between gap-4">
                       <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center border border-white/10">
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500/20 to-cyan-500/20 grid place-items-center border border-white/10">
                           <Calendar className="h-5 w-5 text-blue-400" />
                         </div>
                         <div>
@@ -221,7 +274,6 @@ export default function DashboardPage() {
                           </p>
                         </div>
                       </div>
-
                       <div className="flex items-center gap-6">
                         <div className="text-right">
                           <p className="text-sm font-medium text-white">
@@ -231,13 +283,11 @@ export default function DashboardPage() {
                             até {formatDate(booking.endDate)}
                           </p>
                         </div>
-
                         <div className="text-right min-w-[100px]">
                           <p className="font-bold text-white">
                             {formatCurrency(booking.totalPrice)}
                           </p>
                         </div>
-
                         <Badge
                           className={`${STATUS_COLORS[booking.status as keyof typeof STATUS_COLORS]} border min-w-[90px] justify-center`}
                           variant="outline"
@@ -246,7 +296,7 @@ export default function DashboardPage() {
                         </Badge>
                       </div>
                     </div>
-                  </div>
+                  </article>
                 ))}
               </div>
             ) : (
