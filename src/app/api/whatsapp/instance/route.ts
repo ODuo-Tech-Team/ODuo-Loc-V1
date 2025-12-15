@@ -60,6 +60,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
+    // Verificar variáveis de ambiente da Uazapi
+    if (!process.env.UAZAPI_BASE_URL || !process.env.UAZAPI_API_KEY) {
+      console.error("[WhatsApp] Variáveis UAZAPI_BASE_URL ou UAZAPI_API_KEY não configuradas")
+      return NextResponse.json(
+        { error: "Integração WhatsApp não configurada. Adicione UAZAPI_BASE_URL e UAZAPI_API_KEY no .env" },
+        { status: 500 }
+      )
+    }
+
     // Verificar se tenant tem permissão (plano com WhatsApp)
     const tenant = await prisma.tenant.findUnique({
       where: { id: session.user.tenantId },
@@ -70,7 +79,18 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    if (!tenant?.subscription?.plan?.whatsappEnabled) {
+    if (!tenant) {
+      return NextResponse.json({ error: "Tenant não encontrado" }, { status: 404 })
+    }
+
+    if (!tenant.subscription) {
+      return NextResponse.json(
+        { error: "Você não possui uma assinatura ativa" },
+        { status: 403 }
+      )
+    }
+
+    if (!tenant.subscription.plan?.whatsappEnabled) {
       return NextResponse.json(
         { error: "WhatsApp não habilitado no seu plano" },
         { status: 403 }
@@ -87,7 +107,29 @@ export async function POST(request: NextRequest) {
     if (!instance) {
       // Criar nova instância na Uazapi
       const instanceName = `oduo_${tenant.slug}_${Date.now()}`
-      const created = await uazapi.createInstance(instanceName)
+
+      console.log(`[WhatsApp] Criando instância: ${instanceName}`)
+
+      let created
+      try {
+        created = await uazapi.createInstance(instanceName)
+      } catch (apiError: unknown) {
+        const errorMessage = apiError instanceof Error ? apiError.message : String(apiError)
+        console.error("[WhatsApp] Erro Uazapi:", errorMessage)
+
+        // Verificar se é erro de autenticação
+        if (errorMessage.includes("401") || errorMessage.includes("Unauthorized")) {
+          return NextResponse.json(
+            { error: "Chave de API Uazapi inválida. Verifique UAZAPI_API_KEY no .env" },
+            { status: 500 }
+          )
+        }
+
+        return NextResponse.json(
+          { error: "Erro ao conectar com Uazapi: " + errorMessage },
+          { status: 500 }
+        )
+      }
 
       if (!created.success) {
         return NextResponse.json(
@@ -98,7 +140,11 @@ export async function POST(request: NextRequest) {
 
       // Configurar webhook
       const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/whatsapp/webhook/uazapi`
-      await uazapi.setWebhook(created.instance.id, webhookUrl)
+      try {
+        await uazapi.setWebhook(created.instance.id, webhookUrl)
+      } catch {
+        console.warn("[WhatsApp] Falha ao configurar webhook, continuando...")
+      }
 
       // Salvar no banco
       instance = await prisma.whatsAppInstance.create({
@@ -110,10 +156,30 @@ export async function POST(request: NextRequest) {
           webhookUrl,
         },
       })
+
+      console.log(`[WhatsApp] Instância criada: ${instance.id}`)
     }
 
     // Conectar (gerar QR Code)
-    const connectResult = await uazapi.connectInstance(instance.instanceId)
+    let connectResult
+    try {
+      connectResult = await uazapi.connectInstance(instance.instanceId)
+    } catch (connectError: unknown) {
+      const errorMessage = connectError instanceof Error ? connectError.message : String(connectError)
+      console.error("[WhatsApp] Erro ao conectar:", errorMessage)
+
+      if (errorMessage.includes("401") || errorMessage.includes("Unauthorized")) {
+        return NextResponse.json(
+          { error: "Chave de API Uazapi inválida. Verifique UAZAPI_API_KEY no .env" },
+          { status: 500 }
+        )
+      }
+
+      return NextResponse.json(
+        { error: "Erro ao gerar QR Code: " + errorMessage },
+        { status: 500 }
+      )
+    }
 
     // Atualizar status e QR
     await prisma.whatsAppInstance.update({
@@ -135,7 +201,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Erro ao criar/conectar instância:", error)
     return NextResponse.json(
-      { error: "Erro ao conectar WhatsApp" },
+      { error: "Erro interno ao conectar WhatsApp" },
       { status: 500 }
     )
   }

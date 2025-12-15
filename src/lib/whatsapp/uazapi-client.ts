@@ -10,9 +10,14 @@ import {
   normalizePhone,
 } from "./types"
 
-// Configuração base da API
-const UAZAPI_BASE_URL = process.env.UAZAPI_BASE_URL || "https://api.uazapi.com"
-const UAZAPI_API_KEY = process.env.UAZAPI_API_KEY || ""
+// Funções para obter configuração em runtime (não em build time)
+function getBaseUrl(): string {
+  return process.env.UAZAPI_BASE_URL || "https://api.uazapi.com"
+}
+
+function getApiKey(): string {
+  return process.env.UAZAPI_API_KEY || ""
+}
 
 interface UazapiClientOptions {
   baseUrl?: string
@@ -24,12 +29,19 @@ interface UazapiClientOptions {
  * Docs: https://docs.uazapi.com/
  */
 export class UazapiClient {
-  private baseUrl: string
-  private apiKey: string
+  private options?: UazapiClientOptions
 
   constructor(options?: UazapiClientOptions) {
-    this.baseUrl = options?.baseUrl || UAZAPI_BASE_URL
-    this.apiKey = options?.apiKey || UAZAPI_API_KEY
+    this.options = options
+  }
+
+  // Getters dinâmicos para pegar valores em runtime
+  private get baseUrl(): string {
+    return this.options?.baseUrl || getBaseUrl()
+  }
+
+  private get apiKey(): string {
+    return this.options?.apiKey || getApiKey()
   }
 
   private async request<T>(
@@ -37,6 +49,10 @@ export class UazapiClient {
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`
+
+    // Log para debug
+    console.log(`[Uazapi] Request to: ${url}`)
+    console.log(`[Uazapi] API Key configured: ${this.apiKey ? "Yes (length: " + this.apiKey.length + ")" : "No"}`)
 
     const response = await fetch(url, {
       ...options,
@@ -390,15 +406,8 @@ export class UazapiClient {
   }
 }
 
-// Singleton para uso global
-let uazapiClient: UazapiClient | null = null
-
+// Factory function - cria nova instância a cada chamada
+// Importante: NÃO usar singleton para garantir que env vars sejam lidas em runtime
 export function getUazapiClient(): UazapiClient {
-  if (!uazapiClient) {
-    uazapiClient = new UazapiClient()
-  }
-  return uazapiClient
+  return new UazapiClient()
 }
-
-// Export para uso direto
-export const uazapi = getUazapiClient()
