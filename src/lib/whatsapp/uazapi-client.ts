@@ -58,7 +58,7 @@ export class UazapiClient {
       ...options,
       headers: {
         "Content-Type": "application/json",
-        apikey: this.apiKey,
+        "admintoken": this.apiKey,
         ...options.headers,
       },
     })
@@ -78,11 +78,16 @@ export class UazapiClient {
 
   /**
    * Cria uma nova instância do WhatsApp
+   * Docs: https://docs.uazapi.com - POST /instance/init
    */
   async createInstance(name: string): Promise<CreateInstanceResponse> {
-    return this.request<CreateInstanceResponse>("/instance/create", {
+    return this.request<CreateInstanceResponse>("/instance/init", {
       method: "POST",
-      body: JSON.stringify({ instanceName: name }),
+      body: JSON.stringify({
+        name,
+        systemName: "oduoloc",
+        browser: "chrome",
+      }),
     })
   }
 

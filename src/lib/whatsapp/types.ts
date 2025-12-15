@@ -21,7 +21,7 @@ export interface CreateInstanceResponse {
   instance: {
     id: string
     name: string
-    apikey: string
+    token: string  // Token único para autenticação desta instância
   }
 }
 

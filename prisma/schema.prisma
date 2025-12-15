@@ -1537,6 +1537,7 @@ model WhatsAppInstance {
   // Identificador da instância na Uazapi
   instanceId   String
   instanceName String
+  apiToken     String? @db.Text // Token retornado pela API para operações da instância
 
   // Status da conexão
   status      WhatsAppInstanceStatus @default(DISCONNECTED)

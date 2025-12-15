@@ -131,7 +131,9 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      if (!created.success) {
+      console.log(`[WhatsApp] Resposta da API:`, JSON.stringify(created, null, 2))
+
+      if (!created.success && !created.instance) {
         return NextResponse.json(
           { error: "Erro ao criar instância no WhatsApp" },
           { status: 500 }
@@ -146,18 +148,19 @@ export async function POST(request: NextRequest) {
         console.warn("[WhatsApp] Falha ao configurar webhook, continuando...")
       }
 
-      // Salvar no banco
+      // Salvar no banco (incluindo o token da instância)
       instance = await prisma.whatsAppInstance.create({
         data: {
           tenantId: session.user.tenantId,
           instanceId: created.instance.id,
           instanceName: created.instance.name,
+          apiToken: created.instance.token, // Token para operações da instância
           status: "DISCONNECTED",
           webhookUrl,
         },
       })
 
-      console.log(`[WhatsApp] Instância criada: ${instance.id}`)
+      console.log(`[WhatsApp] Instância criada: ${instance.id}, token salvo: ${created.instance.token ? "Sim" : "Não"}`)
     }
 
     // Conectar (gerar QR Code)
