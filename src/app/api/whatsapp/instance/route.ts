@@ -163,17 +163,24 @@ export async function POST(request: NextRequest) {
       console.log(`[WhatsApp] Instância criada: ${instance.id}, token salvo: ${created.instance.token ? "Sim" : "Não"}`)
     }
 
-    // Conectar (gerar QR Code)
+    // Conectar (gerar QR Code) - usa o token da instância
+    if (!instance.apiToken) {
+      return NextResponse.json(
+        { error: "Token da instância não encontrado. Recrie a conexão." },
+        { status: 500 }
+      )
+    }
+
     let connectResult
     try {
-      connectResult = await uazapi.connectInstance(instance.instanceId)
+      connectResult = await uazapi.connectInstance(instance.apiToken)
     } catch (connectError: unknown) {
       const errorMessage = connectError instanceof Error ? connectError.message : String(connectError)
       console.error("[WhatsApp] Erro ao conectar:", errorMessage)
 
       if (errorMessage.includes("401") || errorMessage.includes("Unauthorized")) {
         return NextResponse.json(
-          { error: "Chave de API Uazapi inválida. Verifique UAZAPI_API_KEY no .env" },
+          { error: "Token da instância inválido. Recrie a conexão." },
           { status: 500 }
         )
       }

@@ -72,6 +72,37 @@ export class UazapiClient {
     return response.json()
   }
 
+  /**
+   * Request usando token da instância (para operações da instância específica)
+   */
+  private async requestWithToken<T>(
+    endpoint: string,
+    instanceToken: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${this.baseUrl}${endpoint}`
+
+    console.log(`[Uazapi] Request to: ${url}`)
+    console.log(`[Uazapi] Using instance token: ${instanceToken ? "Yes" : "No"}`)
+
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        "token": instanceToken, // Token da instância, não admintoken
+        ...options.headers,
+      },
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`[Uazapi] Error ${response.status}:`, errorText)
+      throw new Error(`Uazapi API error: ${response.status} - ${errorText}`)
+    }
+
+    return response.json()
+  }
+
   // ============================================
   // Instance Management
   // ============================================
@@ -93,10 +124,13 @@ export class UazapiClient {
 
   /**
    * Conecta uma instância (gera QR Code)
+   * Usa o token da instância, não o admintoken
+   * Docs: POST /instance/connect - sem phone = QR Code
    */
-  async connectInstance(instanceId: string): Promise<QRCodeResponse> {
-    return this.request<QRCodeResponse>(`/instance/connect/${instanceId}`, {
-      method: "GET",
+  async connectInstance(instanceToken: string): Promise<QRCodeResponse> {
+    return this.requestWithToken<QRCodeResponse>("/instance/connect", instanceToken, {
+      method: "POST",
+      body: JSON.stringify({}), // Body vazio para gerar QR Code
     })
   }
 
