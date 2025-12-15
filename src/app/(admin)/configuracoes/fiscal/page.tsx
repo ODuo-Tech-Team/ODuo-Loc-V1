@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import { TiptapEditor } from "@/components/templates/tiptap-editor"
 import {
   Select,
   SelectContent,
@@ -631,14 +631,12 @@ export default function ConfiguracaoFiscalPage() {
                     </Button>
                   </div>
                 </div>
-                <Textarea
-                  id="descricaoTemplate"
-                  rows={8}
-                  value={config.descricaoTemplate}
-                  onChange={(e) =>
-                    setConfig({ ...config, descricaoTemplate: e.target.value })
+                <TiptapEditor
+                  content={config.descricaoTemplate}
+                  onChange={(html) =>
+                    setConfig({ ...config, descricaoTemplate: html })
                   }
-                  className="font-mono text-sm"
+                  placeholder="Comece a escrever a descrição do serviço..."
                 />
               </div>
 

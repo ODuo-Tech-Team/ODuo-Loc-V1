@@ -629,6 +629,7 @@ export default function NovaReservaPage() {
                         >
                           <Checkbox
                             checked={selectedUnitIds.includes(unit.id)}
+                            onClick={(e) => e.stopPropagation()}
                             onCheckedChange={(checked) => {
                               setSelectedUnitIds((prev) =>
                                 checked

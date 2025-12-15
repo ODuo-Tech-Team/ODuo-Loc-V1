@@ -27,16 +27,48 @@ export const TEMPLATE_VARIABLES = [
 ] as const
 
 /**
+ * Remove tags HTML de uma string, preservando quebras de linha
+ * @param html - String com possíveis tags HTML
+ * @returns Texto sem tags HTML
+ */
+export function stripHtml(html: string): string {
+  // Substitui <br>, <br/>, </p>, </div> por quebras de linha
+  let text = html.replace(/<br\s*\/?>/gi, '\n')
+  text = text.replace(/<\/p>/gi, '\n')
+  text = text.replace(/<\/div>/gi, '\n')
+  text = text.replace(/<\/li>/gi, '\n')
+
+  // Remove todas as outras tags HTML
+  text = text.replace(/<[^>]*>/g, '')
+
+  // Decodifica entidades HTML comuns
+  text = text.replace(/&nbsp;/gi, ' ')
+  text = text.replace(/&amp;/gi, '&')
+  text = text.replace(/&lt;/gi, '<')
+  text = text.replace(/&gt;/gi, '>')
+  text = text.replace(/&quot;/gi, '"')
+  text = text.replace(/&#39;/gi, "'")
+
+  // Remove múltiplas quebras de linha consecutivas
+  text = text.replace(/\n{3,}/g, '\n\n')
+
+  // Remove espaços extras no início e fim
+  return text.trim()
+}
+
+/**
  * Processa um template substituindo as variáveis pelos valores
+ * Remove tags HTML automaticamente (NFS-e requer texto puro)
  * @param template - Template com variáveis no formato {variavel}
  * @param variables - Objeto com os valores das variáveis
- * @returns Texto processado
+ * @returns Texto processado (sem HTML)
  */
 export function processTemplate(
   template: string,
   variables: TemplateVariables
 ): string {
-  let result = template
+  // Primeiro, remove tags HTML do template
+  let result = stripHtml(template)
 
   // Substitui cada variável
   for (const [key, value] of Object.entries(variables)) {
