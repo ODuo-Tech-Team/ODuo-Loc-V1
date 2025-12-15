@@ -296,7 +296,7 @@ export default function LeadDetailPage() {
               Registrar Atividade
             </Button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="h-[90vh] overflow-y-auto">
+          <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
             <SheetHeader className="mb-6">
               <SheetTitle>Nova Atividade</SheetTitle>
               <SheetDescription>
@@ -319,7 +319,7 @@ export default function LeadDetailPage() {
               Editar
             </Button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="h-[90vh] overflow-y-auto">
+          <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
             <SheetHeader className="mb-6">
               <SheetTitle>Editar Lead</SheetTitle>
             </SheetHeader>
@@ -349,12 +349,14 @@ export default function LeadDetailPage() {
         )}
 
         {lead.convertedCustomerId && (
-          <Link href={`/clientes/${lead.convertedCustomerId}`}>
-            <Button variant="outline" className="text-emerald-400">
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Ver Cliente
-            </Button>
-          </Link>
+          <Button
+            variant="outline"
+            className="text-emerald-400"
+            onClick={() => router.push(`/clientes/${lead.convertedCustomerId}`)}
+          >
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Ver Cliente
+          </Button>
         )}
 
         {/* Deletar */}
