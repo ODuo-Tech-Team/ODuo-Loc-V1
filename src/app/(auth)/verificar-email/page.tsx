@@ -61,8 +61,9 @@ function VerifyEmailContent() {
 
       setEmailSent(true)
       toast.success("Email reenviado com sucesso!")
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao reenviar email")
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro ao reenviar email"
+      toast.error(message)
     } finally {
       setIsLoading(false)
     }

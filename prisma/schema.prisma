@@ -129,6 +129,10 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, active])
+  @@index([tenantId, role])
 }
 
 // Token temporário para auto-login após registro
@@ -491,6 +495,8 @@ model Booking {
   @@index([tenantId, status, startDate])
   @@index([equipmentId, startDate, endDate])
   @@index([validUntil])
+  @@index([customerId])
+  @@index([tenantId, customerId])
 }
 
 // Checklist de entrada/saída do equipamento
@@ -1331,6 +1337,7 @@ model FinancialTransaction {
   @@index([tenantId, date])
   @@index([tenantId, status])
   @@index([tenantId, type])
+  @@index([tenantId, status, dueDate])
   @@index([categoryId])
   @@index([recurrenceId])
 }

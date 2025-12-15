@@ -435,8 +435,8 @@ export class NfseService {
    * e o Focus NFe usa essa ordem para gerar o XML. Ordem incorreta causa
    * erro de validação de schema XML.
    */
-  private ordenarCamposTomador(tomador: any): any {
-    const ordenado: any = {}
+  private ordenarCamposTomador(tomador: NfsePayload['tomador']): NfsePayload['tomador'] {
+    const ordenado: NfsePayload['tomador'] = { razao_social: '' }
 
     // Ordem correta para o XML Focus NFe
     if (tomador.razao_social) ordenado.razao_social = tomador.razao_social

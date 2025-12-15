@@ -251,7 +251,7 @@ export default function EditUsuarioPage({
       setLoading(true)
 
       // Remove password if empty
-      const updateData: any = {
+      const updateData: { name: string; email: string; role: string; password?: string } = {
         name: data.name,
         email: data.email,
         role: data.role,
@@ -300,7 +300,7 @@ export default function EditUsuarioPage({
       <div className="p-8 space-y-6">
         <div className="flex items-center gap-4">
           <Link href="/usuarios">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" aria-label="Voltar para lista de usuários">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
@@ -335,7 +335,7 @@ export default function EditUsuarioPage({
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/usuarios">
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" aria-label="Voltar para lista de usuários">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>

@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { sendEmail, emailTemplates } from "@/lib/email"
+import { applyRateLimit } from "@/lib/rate-limit"
 import crypto from "crypto"
 
 // POST - Solicitar reset de senha
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting - 5 requisições por minuto
+    const rateLimitResult = await applyRateLimit(request, 'auth')
+    if (rateLimitResult) return rateLimitResult
+
     const body = await request.json()
     const { email } = body
 

@@ -206,8 +206,9 @@ export default function UsersPage() {
       setCreateOpen(false)
       setNewUser({ name: "", email: "", password: "", role: "ADMIN", tenantId: "" })
       fetchUsers()
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao criar usuário")
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro ao criar usuário"
+      toast.error(message)
     } finally {
       setCreating(false)
     }
@@ -218,7 +219,7 @@ export default function UsersPage() {
 
     setEditing(true)
     try {
-      const payload: any = {}
+      const payload: Record<string, string> = {}
       if (editData.name) payload.name = editData.name
       if (editData.email) payload.email = editData.email
       if (editData.password) payload.password = editData.password
@@ -261,8 +262,9 @@ export default function UsersPage() {
       setDeleteOpen(false)
       setUserToDelete(null)
       fetchUsers()
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao deletar usuário")
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro ao deletar usuário"
+      toast.error(message)
     } finally {
       setDeleting(false)
     }

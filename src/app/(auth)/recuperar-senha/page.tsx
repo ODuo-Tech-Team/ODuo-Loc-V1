@@ -55,8 +55,9 @@ export default function RecuperarSenhaPage() {
       }
 
       setEmailSent(true)
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao processar solicitação")
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro ao processar solicitação"
+      toast.error(message)
     } finally {
       setIsLoading(false)
     }

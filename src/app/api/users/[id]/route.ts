@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 import bcrypt from "bcryptjs"
 
 // GET - Buscar usuário por ID
@@ -112,9 +113,9 @@ export async function PUT(
       )
     }
 
-    if (password && password.length < 6) {
+    if (password && password.length < 8) {
       return NextResponse.json(
-        { error: "Senha deve ter no mínimo 6 caracteres" },
+        { error: "Senha deve ter no mínimo 8 caracteres" },
         { status: 400 }
       )
     }
@@ -134,7 +135,7 @@ export async function PUT(
     }
 
     // Preparar dados para atualização
-    const updateData: any = {}
+    const updateData: Prisma.UserUpdateInput = {}
     if (name) updateData.name = name
     if (email) updateData.email = email
     if (role) updateData.role = role

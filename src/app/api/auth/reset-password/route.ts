@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { applyRateLimit } from "@/lib/rate-limit"
 import bcrypt from "bcryptjs"
 
 // POST - Confirmar reset de senha
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting - 5 requisições por minuto
+    const rateLimitResult = await applyRateLimit(request, 'auth')
+    if (rateLimitResult) return rateLimitResult
+
     const body = await request.json()
     const { token, password } = body
 
@@ -15,9 +20,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (password.length < 6) {
+    // Política de senha: mínimo 8 caracteres
+    if (password.length < 8) {
       return NextResponse.json(
-        { error: "A senha deve ter pelo menos 6 caracteres" },
+        { error: "A senha deve ter pelo menos 8 caracteres" },
         { status: 400 }
       )
     }

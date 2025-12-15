@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 
 // GET - Listar atividades do lead
 export async function GET(
@@ -121,7 +122,7 @@ export async function POST(
     })
 
     // Atualizar lead se necessário
-    const leadUpdateData: any = {}
+    const leadUpdateData: Prisma.LeadUpdateInput = {}
 
     if (updateLeadStatus) {
       leadUpdateData.status = updateLeadStatus

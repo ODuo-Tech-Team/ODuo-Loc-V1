@@ -62,37 +62,39 @@ export async function sendEmail({
   }
 }
 
-// Estilos base da identidade visual ODuo
+// Estilos base da identidade visual ODuoLoc
+// Cores: Primary #317AE0, Secondary #195AB4, Accent #06b6d4, Background #04132A
 const baseStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Montserrat:wght@400;500;600&display=swap');
 
   body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     line-height: 1.6;
-    color: #e4e4e7;
-    background-color: #09090b;
+    color: #ffffff;
+    background-color: #04132A;
     margin: 0;
     padding: 0;
   }
   .wrapper {
-    background: linear-gradient(135deg, #09090b 0%, #18181b 50%, #09090b 100%);
+    background: linear-gradient(180deg, #04132A 0%, #0a1e3d 50%, #04132A 100%);
     padding: 40px 20px;
   }
   .container {
     max-width: 600px;
     margin: 0 auto;
-    background: linear-gradient(180deg, rgba(24, 24, 27, 0.95) 0%, rgba(9, 9, 11, 0.98) 100%);
+    background: linear-gradient(180deg, #0a1e3d 0%, #04132A 100%);
     border-radius: 16px;
-    border: 1px solid rgba(63, 63, 70, 0.5);
+    border: 1px solid rgba(49, 122, 224, 0.2);
     overflow: hidden;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(49, 122, 224, 0.1);
   }
   .header {
-    background: linear-gradient(135deg, #dc2626 0%, #ea580c 50%, #f97316 100%);
+    background: linear-gradient(135deg, #317AE0 0%, #195AB4 100%);
     padding: 32px 24px;
     text-align: center;
   }
   .logo {
+    font-family: 'Poppins', sans-serif;
     font-size: 28px;
     font-weight: 700;
     color: #ffffff;
@@ -101,12 +103,13 @@ const baseStyles = `
   }
   .logo-subtitle {
     font-size: 12px;
-    color: rgba(255,255,255,0.8);
+    color: rgba(255,255,255,0.85);
     margin-top: 4px;
     letter-spacing: 2px;
     text-transform: uppercase;
   }
   .header-title {
+    font-family: 'Poppins', sans-serif;
     font-size: 24px;
     font-weight: 600;
     color: #ffffff;
@@ -116,53 +119,55 @@ const baseStyles = `
     padding: 32px 24px;
   }
   .greeting {
+    font-family: 'Poppins', sans-serif;
     font-size: 16px;
-    color: #fafafa;
+    color: #ffffff;
     margin-bottom: 16px;
   }
   .message {
     font-size: 14px;
-    color: #a1a1aa;
+    color: #94a3b8;
     margin-bottom: 24px;
   }
   .details-card {
-    background: linear-gradient(135deg, rgba(39, 39, 42, 0.6) 0%, rgba(24, 24, 27, 0.8) 100%);
-    border: 1px solid rgba(63, 63, 70, 0.5);
+    background: rgba(49, 122, 224, 0.1);
+    border: 1px solid rgba(49, 122, 224, 0.25);
     border-radius: 12px;
     padding: 20px;
     margin: 24px 0;
   }
   .details-title {
+    font-family: 'Poppins', sans-serif;
     font-size: 14px;
     font-weight: 600;
-    color: #f97316;
+    color: #06b6d4;
     text-transform: uppercase;
     letter-spacing: 1px;
     margin-bottom: 16px;
     padding-bottom: 12px;
-    border-bottom: 1px solid rgba(249, 115, 22, 0.2);
+    border-bottom: 1px solid rgba(6, 182, 212, 0.3);
   }
   .details-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 10px 0;
-    border-bottom: 1px solid rgba(63, 63, 70, 0.3);
+    border-bottom: 1px solid rgba(49, 122, 224, 0.15);
   }
   .details-row:last-child {
     border-bottom: none;
   }
   .details-label {
     font-size: 13px;
-    color: #71717a;
+    color: #94a3b8;
   }
   .details-value {
     font-size: 14px;
     font-weight: 600;
-    color: #fafafa;
+    color: #ffffff;
   }
   .total-row {
-    background: linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(234, 88, 12, 0.05) 100%);
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(49, 122, 224, 0.1) 100%);
     border-radius: 8px;
     padding: 16px;
     margin-top: 12px;
@@ -170,11 +175,11 @@ const baseStyles = `
   .total-value {
     font-size: 24px;
     font-weight: 700;
-    color: #f97316;
+    color: #06b6d4;
   }
   .highlight-box {
-    background: linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(234, 88, 12, 0.1) 100%);
-    border: 1px solid rgba(249, 115, 22, 0.3);
+    background: linear-gradient(135deg, rgba(49, 122, 224, 0.15) 0%, rgba(25, 90, 180, 0.1) 100%);
+    border: 1px solid rgba(49, 122, 224, 0.3);
     border-radius: 12px;
     padding: 20px;
     margin: 24px 0;
@@ -182,68 +187,90 @@ const baseStyles = `
   }
   .highlight-text {
     font-size: 15px;
-    color: #fafafa;
+    color: #ffffff;
     margin: 0;
   }
   .highlight-text strong {
-    color: #f97316;
+    color: #06b6d4;
   }
   .warning-box {
     background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.1) 100%);
     border: 1px solid rgba(245, 158, 11, 0.3);
-    border-radius: 12px;
+    border-left: 4px solid #f59e0b;
+    border-radius: 0 12px 12px 0;
     padding: 20px;
     margin: 24px 0;
   }
   .success-box {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%);
-    border: 1px solid rgba(16, 185, 129, 0.3);
-    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(22, 163, 74, 0.1) 100%);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    border-left: 4px solid #22c55e;
+    border-radius: 0 12px 12px 0;
     padding: 20px;
     margin: 24px 0;
   }
   .error-box {
     background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.1) 100%);
     border: 1px solid rgba(239, 68, 68, 0.3);
-    border-radius: 12px;
+    border-left: 4px solid #ef4444;
+    border-radius: 0 12px 12px 0;
+    padding: 20px;
+    margin: 24px 0;
+  }
+  .info-box {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(49, 122, 224, 0.1) 100%);
+    border: 1px solid rgba(6, 182, 212, 0.3);
+    border-left: 4px solid #06b6d4;
+    border-radius: 0 12px 12px 0;
     padding: 20px;
     margin: 24px 0;
   }
   .signature {
     margin-top: 32px;
     padding-top: 24px;
-    border-top: 1px solid rgba(63, 63, 70, 0.3);
+    border-top: 1px solid rgba(49, 122, 224, 0.2);
   }
   .signature-text {
     font-size: 14px;
-    color: #a1a1aa;
+    color: #94a3b8;
   }
   .signature-name {
+    font-family: 'Poppins', sans-serif;
     font-size: 16px;
     font-weight: 600;
-    color: #fafafa;
+    color: #ffffff;
     margin-top: 8px;
   }
   .footer {
-    background: rgba(9, 9, 11, 0.8);
+    background: rgba(4, 19, 42, 0.9);
     padding: 24px;
     text-align: center;
-    border-top: 1px solid rgba(63, 63, 70, 0.3);
+    border-top: 1px solid rgba(49, 122, 224, 0.2);
   }
   .footer-text {
     font-size: 12px;
-    color: #52525b;
+    color: #64748b;
     margin: 0;
   }
   .footer-brand {
+    font-family: 'Poppins', sans-serif;
     font-size: 14px;
     font-weight: 600;
-    color: #f97316;
+    color: #317AE0;
     margin-top: 8px;
+  }
+  .footer-links {
+    margin-top: 12px;
+  }
+  .footer-link {
+    color: #317AE0;
+    text-decoration: none;
+    font-size: 12px;
+    margin: 0 8px;
   }
   .button {
     display: inline-block;
-    background: linear-gradient(135deg, #dc2626 0%, #ea580c 100%);
+    background: linear-gradient(135deg, #317AE0 0%, #195AB4 100%);
     color: #ffffff;
     text-decoration: none;
     padding: 14px 32px;
@@ -251,10 +278,55 @@ const baseStyles = `
     font-weight: 600;
     font-size: 14px;
     margin: 16px 0;
-    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.3);
+    box-shadow: 0 4px 14px rgba(49, 122, 224, 0.4);
   }
   .button:hover {
-    background: linear-gradient(135deg, #b91c1c 0%, #c2410c 100%);
+    background: linear-gradient(135deg, #4a90ed 0%, #317AE0 100%);
+  }
+  .button-secondary {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    text-decoration: none;
+    padding: 12px 28px;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 14px;
+    margin: 8px;
+  }
+  .price-highlight {
+    font-family: 'Poppins', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: #06b6d4;
+    text-align: center;
+    margin: 16px 0;
+  }
+  .badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge-success {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+  }
+  .badge-warning {
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+  }
+  .badge-error {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+  }
+  .badge-info {
+    background: rgba(6, 182, 212, 0.2);
+    color: #06b6d4;
   }
 `
 
@@ -271,7 +343,7 @@ export const emailTemplates = {
     tenantPhone?: string
     bookingId?: string
   }) => ({
-    subject: `Reserva Confirmada - ${data.equipmentName} | ODuo`,
+    subject: `Reserva Confirmada - ${data.equipmentName} | ODuoLoc`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -284,8 +356,8 @@ export const emailTemplates = {
           <div class="wrapper">
             <div class="container">
               <div class="header">
-                <h1 class="logo">ODuo</h1>
-                <p class="logo-subtitle">Gestão de Locações</p>
+                <h1 class="logo">ODuoLoc</h1>
+                <p class="logo-subtitle">Sistema de Gestão para Locadoras</p>
                 <h2 class="header-title">Reserva Confirmada!</h2>
               </div>
 
@@ -334,8 +406,14 @@ export const emailTemplates = {
               </div>
 
               <div class="footer">
-                <p class="footer-text">Este é um email automático, por favor não responda.</p>
-                <p class="footer-brand">Powered by ODuo</p>
+                <p class="footer-brand">ODuoLoc</p>
+                <p class="footer-text">Sistema de Gestão para Locadoras</p>
+                <div class="footer-links">
+                  <a href="https://oduoloc.com.br" class="footer-link">oduoloc.com.br</a>
+                  <span style="color: #64748b;">|</span>
+                  <a href="mailto:suporte@oduoloc.com.br" class="footer-link">suporte@oduoloc.com.br</a>
+                </div>
+                <p class="footer-text" style="margin-top: 16px; font-size: 11px;">© ${new Date().getFullYear()} ODuo Assessoria. Todos os direitos reservados.</p>
               </div>
             </div>
           </div>
@@ -352,7 +430,7 @@ export const emailTemplates = {
     tenantName: string
     tenantPhone?: string
   }) => ({
-    subject: `Lembrete: Sua reserva começa amanhã - ${data.equipmentName} | ODuo`,
+    subject: `Lembrete: Sua reserva começa amanhã - ${data.equipmentName} | ODuoLoc`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -360,15 +438,15 @@ export const emailTemplates = {
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>${baseStyles}
-            .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%); }
+            .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
           </style>
         </head>
         <body>
           <div class="wrapper">
             <div class="container">
               <div class="header">
-                <h1 class="logo">ODuo</h1>
-                <p class="logo-subtitle">Gestão de Locações</p>
+                <h1 class="logo">ODuoLoc</h1>
+                <p class="logo-subtitle">Sistema de Gestão para Locadoras</p>
                 <h2 class="header-title">Lembrete de Reserva</h2>
               </div>
 
@@ -398,8 +476,14 @@ export const emailTemplates = {
               </div>
 
               <div class="footer">
-                <p class="footer-text">Este é um email automático, por favor não responda.</p>
-                <p class="footer-brand">Powered by ODuo</p>
+                <p class="footer-brand">ODuoLoc</p>
+                <p class="footer-text">Sistema de Gestão para Locadoras</p>
+                <div class="footer-links">
+                  <a href="https://oduoloc.com.br" class="footer-link">oduoloc.com.br</a>
+                  <span style="color: #64748b;">|</span>
+                  <a href="mailto:suporte@oduoloc.com.br" class="footer-link">suporte@oduoloc.com.br</a>
+                </div>
+                <p class="footer-text" style="margin-top: 16px; font-size: 11px;">© ${new Date().getFullYear()} ODuo Assessoria. Todos os direitos reservados.</p>
               </div>
             </div>
           </div>
@@ -418,7 +502,7 @@ export const emailTemplates = {
     tenantName: string
     paymentMethod?: string
   }) => ({
-    subject: `Pagamento Confirmado - Reserva #${data.bookingId.slice(-6)} | ODuo`,
+    subject: `Pagamento Confirmado - Reserva #${data.bookingId.slice(-6)} | ODuoLoc`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -426,15 +510,15 @@ export const emailTemplates = {
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>${baseStyles}
-            .header { background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%); }
+            .header { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); }
           </style>
         </head>
         <body>
           <div class="wrapper">
             <div class="container">
               <div class="header">
-                <h1 class="logo">ODuo</h1>
-                <p class="logo-subtitle">Gestão de Locações</p>
+                <h1 class="logo">ODuoLoc</h1>
+                <p class="logo-subtitle">Sistema de Gestão para Locadoras</p>
                 <h2 class="header-title">Pagamento Confirmado!</h2>
               </div>
 
@@ -484,8 +568,14 @@ export const emailTemplates = {
               </div>
 
               <div class="footer">
-                <p class="footer-text">Este é um email automático, por favor não responda.</p>
-                <p class="footer-brand">Powered by ODuo</p>
+                <p class="footer-brand">ODuoLoc</p>
+                <p class="footer-text">Sistema de Gestão para Locadoras</p>
+                <div class="footer-links">
+                  <a href="https://oduoloc.com.br" class="footer-link">oduoloc.com.br</a>
+                  <span style="color: #64748b;">|</span>
+                  <a href="mailto:suporte@oduoloc.com.br" class="footer-link">suporte@oduoloc.com.br</a>
+                </div>
+                <p class="footer-text" style="margin-top: 16px; font-size: 11px;">© ${new Date().getFullYear()} ODuo Assessoria. Todos os direitos reservados.</p>
               </div>
             </div>
           </div>
@@ -503,7 +593,7 @@ export const emailTemplates = {
     tenantPhone?: string
     bookingId?: string
   }) => ({
-    subject: `Reserva Cancelada - ${data.equipmentName} | ODuo`,
+    subject: `Reserva Cancelada - ${data.equipmentName} | ODuoLoc`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -511,15 +601,15 @@ export const emailTemplates = {
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>${baseStyles}
-            .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%); }
+            .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
           </style>
         </head>
         <body>
           <div class="wrapper">
             <div class="container">
               <div class="header">
-                <h1 class="logo">ODuo</h1>
-                <p class="logo-subtitle">Gestão de Locações</p>
+                <h1 class="logo">ODuoLoc</h1>
+                <p class="logo-subtitle">Sistema de Gestão para Locadoras</p>
                 <h2 class="header-title">Reserva Cancelada</h2>
               </div>
 
@@ -544,8 +634,14 @@ export const emailTemplates = {
               </div>
 
               <div class="footer">
-                <p class="footer-text">Este é um email automático, por favor não responda.</p>
-                <p class="footer-brand">Powered by ODuo</p>
+                <p class="footer-brand">ODuoLoc</p>
+                <p class="footer-text">Sistema de Gestão para Locadoras</p>
+                <div class="footer-links">
+                  <a href="https://oduoloc.com.br" class="footer-link">oduoloc.com.br</a>
+                  <span style="color: #64748b;">|</span>
+                  <a href="mailto:suporte@oduoloc.com.br" class="footer-link">suporte@oduoloc.com.br</a>
+                </div>
+                <p class="footer-text" style="margin-top: 16px; font-size: 11px;">© ${new Date().getFullYear()} ODuo Assessoria. Todos os direitos reservados.</p>
               </div>
             </div>
           </div>
@@ -574,7 +670,7 @@ export const emailTemplates = {
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>${baseStyles}
-            .header { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%); }
+            .header { background: linear-gradient(135deg, #317AE0 0%, #195AB4 100%); }
           </style>
         </head>
         <body>
@@ -634,8 +730,14 @@ export const emailTemplates = {
               </div>
 
               <div class="footer">
-                <p class="footer-text">Este é um email automático, por favor não responda.</p>
-                <p class="footer-brand">Powered by ODuoLoc</p>
+                <p class="footer-brand">ODuoLoc</p>
+                <p class="footer-text">Sistema de Gestão para Locadoras</p>
+                <div class="footer-links">
+                  <a href="https://oduoloc.com.br" class="footer-link">oduoloc.com.br</a>
+                  <span style="color: #64748b;">|</span>
+                  <a href="mailto:suporte@oduoloc.com.br" class="footer-link">suporte@oduoloc.com.br</a>
+                </div>
+                <p class="footer-text" style="margin-top: 16px; font-size: 11px;">© ${new Date().getFullYear()} ODuo Assessoria. Todos os direitos reservados.</p>
               </div>
             </div>
           </div>
@@ -650,7 +752,7 @@ export const emailTemplates = {
     resetUrl: string
     expiresIn: string
   }) => ({
-    subject: `Redefinir sua senha | ODuo`,
+    subject: `Redefinir sua senha | ODuoLoc`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -658,15 +760,15 @@ export const emailTemplates = {
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>${baseStyles}
-            .header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%); }
+            .header { background: linear-gradient(135deg, #317AE0 0%, #195AB4 100%); }
           </style>
         </head>
         <body>
           <div class="wrapper">
             <div class="container">
               <div class="header">
-                <h1 class="logo">ODuo</h1>
-                <p class="logo-subtitle">Gestão de Locações</p>
+                <h1 class="logo">ODuoLoc</h1>
+                <p class="logo-subtitle">Sistema de Gestão para Locadoras</p>
                 <h2 class="header-title">Redefinir Senha</h2>
               </div>
 
@@ -693,13 +795,19 @@ export const emailTemplates = {
 
                 <div class="signature">
                   <p class="signature-text">Atenciosamente,</p>
-                  <p class="signature-name">Equipe ODuo</p>
+                  <p class="signature-name">Equipe ODuoLoc</p>
                 </div>
               </div>
 
               <div class="footer">
-                <p class="footer-text">Este é um email automático, por favor não responda.</p>
-                <p class="footer-brand">Powered by ODuo</p>
+                <p class="footer-brand">ODuoLoc</p>
+                <p class="footer-text">Sistema de Gestão para Locadoras</p>
+                <div class="footer-links">
+                  <a href="https://oduoloc.com.br" class="footer-link">oduoloc.com.br</a>
+                  <span style="color: #64748b;">|</span>
+                  <a href="mailto:suporte@oduoloc.com.br" class="footer-link">suporte@oduoloc.com.br</a>
+                </div>
+                <p class="footer-text" style="margin-top: 16px; font-size: 11px;">© ${new Date().getFullYear()} ODuo Assessoria. Todos os direitos reservados.</p>
               </div>
             </div>
           </div>
@@ -714,7 +822,7 @@ export const emailTemplates = {
     verificationUrl: string
     expiresIn: string
   }) => ({
-    subject: `Verifique seu email | ODuo`,
+    subject: `Verifique seu email | ODuoLoc`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -722,21 +830,21 @@ export const emailTemplates = {
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>${baseStyles}
-            .header { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 50%, #0e7490 100%); }
+            .header { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); }
           </style>
         </head>
         <body>
           <div class="wrapper">
             <div class="container">
               <div class="header">
-                <h1 class="logo">ODuo</h1>
-                <p class="logo-subtitle">Gestão de Locações</p>
+                <h1 class="logo">ODuoLoc</h1>
+                <p class="logo-subtitle">Sistema de Gestão para Locadoras</p>
                 <h2 class="header-title">Verificar Email</h2>
               </div>
 
               <div class="content">
                 <p class="greeting">Olá <strong>${data.userName}</strong>,</p>
-                <p class="message">Bem-vindo ao ODuo! Para completar seu cadastro, por favor verifique seu email clicando no botão abaixo:</p>
+                <p class="message">Bem-vindo ao ODuoLoc! Para completar seu cadastro, por favor verifique seu email clicando no botão abaixo:</p>
 
                 <div style="text-align: center; margin: 32px 0;">
                   <a href="${data.verificationUrl}" class="button" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); box-shadow: 0 4px 14px rgba(6, 182, 212, 0.3);">
@@ -757,13 +865,19 @@ export const emailTemplates = {
 
                 <div class="signature">
                   <p class="signature-text">Atenciosamente,</p>
-                  <p class="signature-name">Equipe ODuo</p>
+                  <p class="signature-name">Equipe ODuoLoc</p>
                 </div>
               </div>
 
               <div class="footer">
-                <p class="footer-text">Este é um email automático, por favor não responda.</p>
-                <p class="footer-brand">Powered by ODuo</p>
+                <p class="footer-brand">ODuoLoc</p>
+                <p class="footer-text">Sistema de Gestão para Locadoras</p>
+                <div class="footer-links">
+                  <a href="https://oduoloc.com.br" class="footer-link">oduoloc.com.br</a>
+                  <span style="color: #64748b;">|</span>
+                  <a href="mailto:suporte@oduoloc.com.br" class="footer-link">suporte@oduoloc.com.br</a>
+                </div>
+                <p class="footer-text" style="margin-top: 16px; font-size: 11px;">© ${new Date().getFullYear()} ODuo Assessoria. Todos os direitos reservados.</p>
               </div>
             </div>
           </div>
@@ -790,9 +904,9 @@ export const emailTemplates = {
     const isContract = data.documentType === 'CONTRACT'
     const documentTypeName = isContract ? 'Contrato de Locação' : 'Recibo de Pagamento'
     const headerColor = isContract
-      ? 'background: linear-gradient(135deg, #dc2626 0%, #ea580c 50%, #f97316 100%);'
-      : 'background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);'
-    const accentColor = isContract ? '#f97316' : '#10b981'
+      ? 'background: linear-gradient(135deg, #317AE0 0%, #195AB4 100%);'
+      : 'background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);'
+    const accentColor = isContract ? '#06b6d4' : '#22c55e'
 
     return {
       subject: `${documentTypeName} - Reserva #${data.bookingId.slice(-8).toUpperCase()} | ${data.tenantName}`,
@@ -864,8 +978,14 @@ export const emailTemplates = {
                 </div>
 
                 <div class="footer">
-                  <p class="footer-text">Este é um email automático, por favor não responda.</p>
-                  <p class="footer-brand">Powered by ODuo</p>
+                  <p class="footer-brand">ODuoLoc</p>
+                  <p class="footer-text">Sistema de Gestão para Locadoras</p>
+                  <div class="footer-links">
+                    <a href="https://oduoloc.com.br" class="footer-link">oduoloc.com.br</a>
+                    <span style="color: #64748b;">|</span>
+                    <a href="mailto:suporte@oduoloc.com.br" class="footer-link">suporte@oduoloc.com.br</a>
+                  </div>
+                  <p class="footer-text" style="margin-top: 16px; font-size: 11px;">© ${new Date().getFullYear()} ODuo Assessoria. Todos os direitos reservados.</p>
                 </div>
               </div>
 
@@ -891,7 +1011,7 @@ export const emailTemplates = {
     tenantName: string
     loginUrl: string
   }) => ({
-    subject: `Bem-vindo ao ODuo! | ${data.tenantName}`,
+    subject: `Bem-vindo ao ODuoLoc! | ${data.tenantName}`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -904,8 +1024,8 @@ export const emailTemplates = {
           <div class="wrapper">
             <div class="container">
               <div class="header">
-                <h1 class="logo">ODuo</h1>
-                <p class="logo-subtitle">Gestão de Locações</p>
+                <h1 class="logo">ODuoLoc</h1>
+                <p class="logo-subtitle">Sistema de Gestão para Locadoras</p>
                 <h2 class="header-title">Bem-vindo!</h2>
               </div>
 
@@ -936,13 +1056,19 @@ export const emailTemplates = {
 
                 <div class="signature">
                   <p class="signature-text">Atenciosamente,</p>
-                  <p class="signature-name">Equipe ODuo</p>
+                  <p class="signature-name">Equipe ODuoLoc</p>
                 </div>
               </div>
 
               <div class="footer">
-                <p class="footer-text">Este é um email automático, por favor não responda.</p>
-                <p class="footer-brand">Powered by ODuo</p>
+                <p class="footer-brand">ODuoLoc</p>
+                <p class="footer-text">Sistema de Gestão para Locadoras</p>
+                <div class="footer-links">
+                  <a href="https://oduoloc.com.br" class="footer-link">oduoloc.com.br</a>
+                  <span style="color: #64748b;">|</span>
+                  <a href="mailto:suporte@oduoloc.com.br" class="footer-link">suporte@oduoloc.com.br</a>
+                </div>
+                <p class="footer-text" style="margin-top: 16px; font-size: 11px;">© ${new Date().getFullYear()} ODuo Assessoria. Todos os direitos reservados.</p>
               </div>
             </div>
           </div>
@@ -968,7 +1094,7 @@ export const emailTemplates = {
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>${baseStyles}
-            .header { background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #4f46e5 100%); }
+            .header { background: linear-gradient(135deg, #317AE0 0%, #195AB4 100%); }
           </style>
         </head>
         <body>
@@ -1023,8 +1149,14 @@ export const emailTemplates = {
               </div>
 
               <div class="footer">
-                <p class="footer-text">Este é um email automático, por favor não responda.</p>
-                <p class="footer-brand">Powered by ODuoLoc</p>
+                <p class="footer-brand">ODuoLoc</p>
+                <p class="footer-text">Sistema de Gestão para Locadoras</p>
+                <div class="footer-links">
+                  <a href="https://oduoloc.com.br" class="footer-link">oduoloc.com.br</a>
+                  <span style="color: #64748b;">|</span>
+                  <a href="mailto:suporte@oduoloc.com.br" class="footer-link">suporte@oduoloc.com.br</a>
+                </div>
+                <p class="footer-text" style="margin-top: 16px; font-size: 11px;">© ${new Date().getFullYear()} ODuo Assessoria. Todos os direitos reservados.</p>
               </div>
             </div>
           </div>
@@ -1114,8 +1246,14 @@ export const emailTemplates = {
               </div>
 
               <div class="footer">
-                <p class="footer-text">Este é um email automático, por favor não responda.</p>
-                <p class="footer-brand">Powered by ODuoLoc</p>
+                <p class="footer-brand">ODuoLoc</p>
+                <p class="footer-text">Sistema de Gestão para Locadoras</p>
+                <div class="footer-links">
+                  <a href="https://oduoloc.com.br" class="footer-link">oduoloc.com.br</a>
+                  <span style="color: #64748b;">|</span>
+                  <a href="mailto:suporte@oduoloc.com.br" class="footer-link">suporte@oduoloc.com.br</a>
+                </div>
+                <p class="footer-text" style="margin-top: 16px; font-size: 11px;">© ${new Date().getFullYear()} ODuo Assessoria. Todos os direitos reservados.</p>
               </div>
             </div>
           </div>
@@ -1139,7 +1277,7 @@ export const emailTemplates = {
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>${baseStyles}
-            .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%); }
+            .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
           </style>
         </head>
         <body>
@@ -1181,8 +1319,14 @@ export const emailTemplates = {
               </div>
 
               <div class="footer">
-                <p class="footer-text">Este é um email automático, por favor não responda.</p>
-                <p class="footer-brand">Powered by ODuoLoc</p>
+                <p class="footer-brand">ODuoLoc</p>
+                <p class="footer-text">Sistema de Gestão para Locadoras</p>
+                <div class="footer-links">
+                  <a href="https://oduoloc.com.br" class="footer-link">oduoloc.com.br</a>
+                  <span style="color: #64748b;">|</span>
+                  <a href="mailto:suporte@oduoloc.com.br" class="footer-link">suporte@oduoloc.com.br</a>
+                </div>
+                <p class="footer-text" style="margin-top: 16px; font-size: 11px;">© ${new Date().getFullYear()} ODuo Assessoria. Todos os direitos reservados.</p>
               </div>
             </div>
           </div>
@@ -1205,7 +1349,7 @@ export const emailTemplates = {
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>${baseStyles}
-            .header { background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%); }
+            .header { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); }
           </style>
         </head>
         <body>
@@ -1244,8 +1388,14 @@ export const emailTemplates = {
               </div>
 
               <div class="footer">
-                <p class="footer-text">Este é um email automático, por favor não responda.</p>
-                <p class="footer-brand">Powered by ODuoLoc</p>
+                <p class="footer-brand">ODuoLoc</p>
+                <p class="footer-text">Sistema de Gestão para Locadoras</p>
+                <div class="footer-links">
+                  <a href="https://oduoloc.com.br" class="footer-link">oduoloc.com.br</a>
+                  <span style="color: #64748b;">|</span>
+                  <a href="mailto:suporte@oduoloc.com.br" class="footer-link">suporte@oduoloc.com.br</a>
+                </div>
+                <p class="footer-text" style="margin-top: 16px; font-size: 11px;">© ${new Date().getFullYear()} ODuo Assessoria. Todos os direitos reservados.</p>
               </div>
             </div>
           </div>
@@ -1272,7 +1422,7 @@ export const emailTemplates = {
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>${baseStyles}
-            .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%); }
+            .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
           </style>
         </head>
         <body>
@@ -1328,8 +1478,14 @@ export const emailTemplates = {
               </div>
 
               <div class="footer">
-                <p class="footer-text">Este é um email automático, por favor não responda.</p>
-                <p class="footer-brand">Powered by ODuoLoc</p>
+                <p class="footer-brand">ODuoLoc</p>
+                <p class="footer-text">Sistema de Gestão para Locadoras</p>
+                <div class="footer-links">
+                  <a href="https://oduoloc.com.br" class="footer-link">oduoloc.com.br</a>
+                  <span style="color: #64748b;">|</span>
+                  <a href="mailto:suporte@oduoloc.com.br" class="footer-link">suporte@oduoloc.com.br</a>
+                </div>
+                <p class="footer-text" style="margin-top: 16px; font-size: 11px;">© ${new Date().getFullYear()} ODuo Assessoria. Todos os direitos reservados.</p>
               </div>
             </div>
           </div>
@@ -1357,7 +1513,7 @@ export const emailTemplates = {
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>${baseStyles}
-            .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%); }
+            .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
           </style>
         </head>
         <body>
@@ -1421,8 +1577,14 @@ export const emailTemplates = {
               </div>
 
               <div class="footer">
-                <p class="footer-text">Este é um email automático, por favor não responda.</p>
-                <p class="footer-brand">Powered by ODuoLoc</p>
+                <p class="footer-brand">ODuoLoc</p>
+                <p class="footer-text">Sistema de Gestão para Locadoras</p>
+                <div class="footer-links">
+                  <a href="https://oduoloc.com.br" class="footer-link">oduoloc.com.br</a>
+                  <span style="color: #64748b;">|</span>
+                  <a href="mailto:suporte@oduoloc.com.br" class="footer-link">suporte@oduoloc.com.br</a>
+                </div>
+                <p class="footer-text" style="margin-top: 16px; font-size: 11px;">© ${new Date().getFullYear()} ODuo Assessoria. Todos os direitos reservados.</p>
               </div>
             </div>
           </div>
@@ -1449,7 +1611,7 @@ export const emailTemplates = {
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>${baseStyles}
-            .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%); }
+            .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
           </style>
         </head>
         <body>
@@ -1509,8 +1671,14 @@ export const emailTemplates = {
               </div>
 
               <div class="footer">
-                <p class="footer-text">Este é um email automático, por favor não responda.</p>
-                <p class="footer-brand">Powered by ODuoLoc</p>
+                <p class="footer-brand">ODuoLoc</p>
+                <p class="footer-text">Sistema de Gestão para Locadoras</p>
+                <div class="footer-links">
+                  <a href="https://oduoloc.com.br" class="footer-link">oduoloc.com.br</a>
+                  <span style="color: #64748b;">|</span>
+                  <a href="mailto:suporte@oduoloc.com.br" class="footer-link">suporte@oduoloc.com.br</a>
+                </div>
+                <p class="footer-text" style="margin-top: 16px; font-size: 11px;">© ${new Date().getFullYear()} ODuo Assessoria. Todos os direitos reservados.</p>
               </div>
             </div>
           </div>
@@ -1536,7 +1704,7 @@ export const emailTemplates = {
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>${baseStyles}
-            .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%); }
+            .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
           </style>
         </head>
         <body>
@@ -1592,8 +1760,14 @@ export const emailTemplates = {
               </div>
 
               <div class="footer">
-                <p class="footer-text">Este é um email automático, por favor não responda.</p>
-                <p class="footer-brand">Powered by ODuoLoc</p>
+                <p class="footer-brand">ODuoLoc</p>
+                <p class="footer-text">Sistema de Gestão para Locadoras</p>
+                <div class="footer-links">
+                  <a href="https://oduoloc.com.br" class="footer-link">oduoloc.com.br</a>
+                  <span style="color: #64748b;">|</span>
+                  <a href="mailto:suporte@oduoloc.com.br" class="footer-link">suporte@oduoloc.com.br</a>
+                </div>
+                <p class="footer-text" style="margin-top: 16px; font-size: 11px;">© ${new Date().getFullYear()} ODuo Assessoria. Todos os direitos reservados.</p>
               </div>
             </div>
           </div>
@@ -1621,7 +1795,7 @@ export const emailTemplates = {
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>${baseStyles}
-            .header { background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%); }
+            .header { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); }
           </style>
         </head>
         <body>
@@ -1691,8 +1865,14 @@ export const emailTemplates = {
               </div>
 
               <div class="footer">
-                <p class="footer-text">Este é um email automático, por favor não responda.</p>
-                <p class="footer-brand">Powered by ODuoLoc</p>
+                <p class="footer-brand">ODuoLoc</p>
+                <p class="footer-text">Sistema de Gestão para Locadoras</p>
+                <div class="footer-links">
+                  <a href="https://oduoloc.com.br" class="footer-link">oduoloc.com.br</a>
+                  <span style="color: #64748b;">|</span>
+                  <a href="mailto:suporte@oduoloc.com.br" class="footer-link">suporte@oduoloc.com.br</a>
+                </div>
+                <p class="footer-text" style="margin-top: 16px; font-size: 11px;">© ${new Date().getFullYear()} ODuo Assessoria. Todos os direitos reservados.</p>
               </div>
             </div>
           </div>

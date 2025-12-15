@@ -130,9 +130,9 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      if (adminPassword.length < 6) {
+      if (adminPassword.length < 8) {
         return NextResponse.json(
-          { error: "A senha do admin deve ter pelo menos 6 caracteres" },
+          { error: "A senha do admin deve ter pelo menos 8 caracteres" },
           { status: 400 }
         )
       }

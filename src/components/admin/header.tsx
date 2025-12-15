@@ -239,7 +239,7 @@ export function Header({ user, onMenuClick }: HeaderProps) {
     return (
         <div className="border-b border-white/10 bg-gray-900/50 backdrop-blur-xl h-16 px-4 flex items-center justify-between sticky top-0 z-50">
             <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" className="md:hidden text-zinc-400 hover:text-white" onClick={onMenuClick}>
+                <Button variant="ghost" size="icon" className="md:hidden text-zinc-400 hover:text-white" onClick={onMenuClick} aria-label="Abrir menu de navegação">
                     <Menu className="h-5 w-5" />
                 </Button>
 
@@ -258,6 +258,7 @@ export function Header({ user, onMenuClick }: HeaderProps) {
                             <button
                                 onClick={clearSearch}
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+                                aria-label="Limpar busca"
                             >
                                 <X className="h-4 w-4" />
                             </button>
@@ -315,7 +316,7 @@ export function Header({ user, onMenuClick }: HeaderProps) {
                 {/* Notifications */}
                 <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>
                     <SheetTrigger asChild>
-                        <Button data-tour="notifications" variant="ghost" size="icon" className="relative text-zinc-400 hover:text-white hover:bg-white/5">
+                        <Button data-tour="notifications" variant="ghost" size="icon" className="relative text-zinc-400 hover:text-white hover:bg-white/5" aria-label="Ver notificações">
                             <Bell className="h-5 w-5" />
                             {unreadCount > 0 && (
                                 <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444] flex items-center justify-center text-[10px] font-bold text-white">

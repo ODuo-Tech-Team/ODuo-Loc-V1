@@ -127,8 +127,8 @@ export default function TenantsPage() {
         toast.error("Preencha todos os campos do administrador ou deixe-os em branco")
         return
       }
-      if (newTenant.adminPassword.length < 6) {
-        toast.error("A senha do admin deve ter pelo menos 6 caracteres")
+      if (newTenant.adminPassword.length < 8) {
+        toast.error("A senha do admin deve ter pelo menos 8 caracteres")
         return
       }
     }
@@ -151,8 +151,9 @@ export default function TenantsPage() {
         adminEmail: "",
         adminPassword: "",
       })
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao criar tenant")
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro ao criar tenant"
+      toast.error(message)
     }
   }, [newTenant, createTenant])
 

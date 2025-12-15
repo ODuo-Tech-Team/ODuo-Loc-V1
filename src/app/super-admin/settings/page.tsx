@@ -137,8 +137,8 @@ export default function SettingsPage() {
       return
     }
 
-    if (newAdmin.password.length < 6) {
-      toast.error("A senha deve ter pelo menos 6 caracteres")
+    if (newAdmin.password.length < 8) {
+      toast.error("A senha deve ter pelo menos 8 caracteres")
       return
     }
 

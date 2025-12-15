@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 import { z } from "zod"
 
 const updateUnitSchema = z.object({
@@ -145,7 +146,7 @@ export async function PUT(
     }
 
     // Preparar dados de atualização
-    const updateData: any = {}
+    const updateData: Prisma.EquipmentUnitUpdateInput = {}
     if (data.serialNumber !== undefined) updateData.serialNumber = data.serialNumber
     if (data.internalCode !== undefined) updateData.internalCode = data.internalCode
     if (data.status !== undefined) updateData.status = data.status
@@ -166,7 +167,7 @@ export async function PUT(
 
     // Se mudou o status, atualizar contagem de estoque do equipamento
     if (data.status && data.status !== currentUnit.status) {
-      const stockUpdates: any = {}
+      const stockUpdates: Record<string, { increment?: number; decrement?: number }> = {}
 
       // Decrementar do status anterior
       switch (currentUnit.status) {
@@ -207,11 +208,11 @@ export async function PUT(
       }
 
       // Simplificar incrementos
-      const finalUpdates: any = {}
+      const finalUpdates: Record<string, { increment: number } | { decrement: number }> = {}
       for (const [key, value] of Object.entries(stockUpdates)) {
         if (typeof value === "object" && value !== null) {
-          const inc = (value as any).increment || 0
-          const dec = (value as any).decrement || 0
+          const inc = value.increment || 0
+          const dec = value.decrement || 0
           const net = inc - dec
           if (net !== 0) {
             finalUpdates[key] = net > 0 ? { increment: net } : { decrement: -net }
@@ -281,7 +282,7 @@ export async function DELETE(
     })
 
     // Atualizar contagem de estoque do equipamento
-    const stockUpdates: any = { totalStock: { decrement: 1 } }
+    const stockUpdates: Record<string, { decrement: number }> = { totalStock: { decrement: 1 } }
     switch (unit.status) {
       case "AVAILABLE":
         stockUpdates.availableStock = { decrement: 1 }

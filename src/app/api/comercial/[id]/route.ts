@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 
 // GET - Buscar lead por ID
 export async function GET(
@@ -111,7 +112,7 @@ export async function PUT(
     }
 
     // Preparar dados para atualização
-    const updateData: any = {
+    const updateData: Prisma.LeadUpdateInput = {
       ...(name !== undefined && { name }),
       ...(company !== undefined && { company }),
       ...(email !== undefined && { email }),
