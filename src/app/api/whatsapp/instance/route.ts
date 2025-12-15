@@ -174,6 +174,16 @@ export async function POST(request: NextRequest) {
     let connectResult
     try {
       connectResult = await uazapi.connectInstance(instance.apiToken)
+      console.log("[WhatsApp] Connect result (1):", JSON.stringify(connectResult, null, 2))
+
+      // Se não retornou QR code, aguardar e tentar novamente
+      // A Uazapi pode precisar de tempo para gerar o QR após criar a instância
+      if (!connectResult.qrcode && connectResult.status !== "connected") {
+        console.log("[WhatsApp] QR vazio, aguardando 3s e tentando novamente...")
+        await new Promise(resolve => setTimeout(resolve, 3000))
+        connectResult = await uazapi.connectInstance(instance.apiToken)
+        console.log("[WhatsApp] Connect result (2):", JSON.stringify(connectResult, null, 2))
+      }
     } catch (connectError: unknown) {
       const errorMessage = connectError instanceof Error ? connectError.message : String(connectError)
       console.error("[WhatsApp] Erro ao conectar:", errorMessage)

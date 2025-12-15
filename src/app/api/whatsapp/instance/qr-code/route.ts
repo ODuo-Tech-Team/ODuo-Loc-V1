@@ -48,9 +48,17 @@ export async function GET() {
     const uazapi = getUazapiClient()
 
     try {
-      const result = await uazapi.connectInstance(instance.apiToken)
+      let result = await uazapi.connectInstance(instance.apiToken)
 
-      console.log("[WhatsApp QR] Resposta connect:", JSON.stringify(result, null, 2))
+      console.log("[WhatsApp QR] Resposta connect (1):", JSON.stringify(result, null, 2))
+
+      // Se não retornou QR code, aguardar um pouco e tentar novamente
+      // A Uazapi pode precisar de tempo para gerar o QR após iniciar a instância
+      if (!result.qrcode && result.status !== "connected") {
+        await new Promise(resolve => setTimeout(resolve, 2000)) // 2 segundos
+        result = await uazapi.connectInstance(instance.apiToken)
+        console.log("[WhatsApp QR] Resposta connect (2):", JSON.stringify(result, null, 2))
+      }
 
       // Normalizar status da Uazapi (lowercase) para nosso enum (uppercase)
       const normalizedStatus = normalizeInstanceStatus(result.status)
