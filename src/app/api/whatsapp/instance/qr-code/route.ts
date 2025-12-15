@@ -52,6 +52,9 @@ export async function GET() {
 
       console.log("[WhatsApp QR] Resposta connect:", JSON.stringify(result, null, 2))
 
+      // Normalizar status da Uazapi (lowercase) para nosso enum (uppercase)
+      const normalizedStatus = normalizeInstanceStatus(result.status)
+
       // Atualizar no banco
       const updateData: { qrCode?: string | null; status?: WhatsAppInstanceStatus } = {}
 
@@ -59,10 +62,10 @@ export async function GET() {
         updateData.qrCode = result.qrcode
       }
 
-      // Normalizar status da Uazapi (lowercase) para nosso enum (uppercase)
-      const normalizedStatus = normalizeInstanceStatus(result.status)
-      if (normalizedStatus) {
-        updateData.status = normalizedStatus
+      // Só atualiza status se for CONNECTED (conectou!)
+      // Mantém CONNECTING enquanto aguarda o usuário escanear
+      if (normalizedStatus === "CONNECTED") {
+        updateData.status = "CONNECTED"
       }
 
       if (Object.keys(updateData).length > 0) {
@@ -72,8 +75,11 @@ export async function GET() {
         })
       }
 
+      // Retorna status atual do banco (CONNECTING) ou CONNECTED se conectou
+      const returnStatus = normalizedStatus === "CONNECTED" ? "CONNECTED" : instance.status
+
       return NextResponse.json({
-        status: normalizedStatus || instance.status,
+        status: returnStatus,
         qrCode: result.qrcode || instance.qrCode,
         phoneNumber: instance.phoneNumber,
       })

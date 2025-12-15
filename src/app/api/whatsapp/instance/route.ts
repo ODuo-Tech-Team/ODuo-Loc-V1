@@ -191,23 +191,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Normalizar status da Uazapi (lowercase) para nosso enum (uppercase)
-    const normalizedStatus = normalizeInstanceStatus(connectResult.status) || "CONNECTING"
+    // Quando o usuário clica em conectar, sempre marcamos como CONNECTING
+    // para que o frontend mostre o QR code e inicie o polling
+    // O status real (CONNECTED/DISCONNECTED) será atualizado via polling ou webhook
+    const statusToSave = connectResult.qrcode ? "CONNECTING" : "CONNECTING"
 
     // Atualizar status e QR
     await prisma.whatsAppInstance.update({
       where: { id: instance.id },
       data: {
-        status: normalizedStatus,
+        status: statusToSave,
         qrCode: connectResult.qrcode || null,
       },
     })
+
+    console.log(`[WhatsApp] Connect result - status: ${connectResult.status}, qrcode: ${connectResult.qrcode ? "Sim" : "Não"}`)
 
     return NextResponse.json({
       success: true,
       instance: {
         ...instance,
-        status: normalizedStatus,
+        status: statusToSave,
         qrCode: connectResult.qrcode,
       },
     })
