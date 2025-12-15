@@ -382,19 +382,20 @@ export function ActivitiesClient({ initialData }: { initialData: InitialData }) 
             </div>
           ) : (
             <>
-              <div className="space-y-3">
-                {activities.map((activity) => {
+              <div className="space-y-3" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 500px' }}>
+                {activities.map((activity, index) => {
                   const ActionIcon = actionIcons[activity.action] || Activity
                   const EntityIcon = entityIcons[activity.entity] || FileText
 
                   return (
-                    <div
+                    <article
                       key={activity.id}
-                      className="flex items-start gap-4 p-4 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors"
+                      className="grid grid-cols-[40px_1fr] gap-4 p-4 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors"
+                      style={{ contain: index > 5 ? 'layout style paint' : undefined }}
                     >
                       {/* Action Icon */}
                       <div
-                        className={`h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        className={`h-10 w-10 rounded-full grid place-items-center ${
                           actionColors[activity.action] || "bg-gray-500/20"
                         }`}
                       >
@@ -402,10 +403,10 @@ export function ActivitiesClient({ initialData }: { initialData: InitialData }) 
                       </div>
 
                       {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <header className="flex items-start justify-between gap-4">
                           <div>
-                            <p className="text-white font-medium">
+                            <p className="text-white font-medium leading-snug">
                               {activity.description}
                             </p>
                             <div className="flex flex-wrap items-center gap-2 mt-2">
@@ -424,25 +425,25 @@ export function ActivitiesClient({ initialData }: { initialData: InitialData }) 
                               </Badge>
                             </div>
                           </div>
-                          <span className="text-sm text-gray-500 whitespace-nowrap">
+                          <time className="text-sm text-gray-500 whitespace-nowrap flex-shrink-0">
                             {formatRelativeTime(activity.createdAt)}
-                          </span>
-                        </div>
+                          </time>
+                        </header>
 
                         {/* User and Tenant Info */}
-                        <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-gray-400">
-                          <div className="flex items-center gap-2">
+                        <footer className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-sm text-gray-400">
+                          <span className="inline-flex items-center gap-2">
                             <User className="h-4 w-4" />
-                            <span>{activity.user.name}</span>
+                            {activity.user.name}
                             <span className="text-gray-600">({activity.user.email})</span>
-                          </div>
-                          <div className="flex items-center gap-2">
+                          </span>
+                          <span className="inline-flex items-center gap-2">
                             <Building2 className="h-4 w-4" />
-                            <span>{activity.tenant.name}</span>
-                          </div>
-                        </div>
+                            {activity.tenant.name}
+                          </span>
+                        </footer>
                       </div>
-                    </div>
+                    </article>
                   )
                 })}
               </div>
