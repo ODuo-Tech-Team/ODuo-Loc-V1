@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { sendEmail, emailTemplates, EMAIL_FROM } from "@/lib/email"
+
+// Mapeamento de métodos de pagamento para português
+const paymentMethodLabels: Record<string, string> = {
+  PIX: "PIX",
+  CREDIT_CARD: "Cartão de Crédito",
+  DEBIT_CARD: "Cartão de Débito",
+  BANK_TRANSFER: "Transferência Bancária",
+  CASH: "Dinheiro",
+  BOLETO: "Boleto Bancário",
+  MANUAL: "Pagamento Manual",
+}
 
 // POST - Registrar pagamento de uma reserva
 export async function POST(
@@ -18,11 +30,29 @@ export async function POST(
     const body = await request.json()
     const { paymentMethod } = body
 
-    // Buscar a reserva
+    // Buscar a reserva com dados do cliente, itens e tenant
     const booking = await prisma.booking.findFirst({
       where: {
         id,
         tenantId: session.user.tenantId,
+      },
+      include: {
+        customer: {
+          select: { name: true, email: true },
+        },
+        tenant: {
+          select: { name: true, phone: true },
+        },
+        items: {
+          include: {
+            equipment: {
+              select: { name: true },
+            },
+          },
+        },
+        equipment: {
+          select: { name: true },
+        },
       },
     })
 
@@ -41,15 +71,56 @@ export async function POST(
       )
     }
 
+    const paymentDate = new Date()
+
     // Atualizar a reserva com a data de pagamento
     const updatedBooking = await prisma.booking.update({
       where: { id },
       data: {
-        paidAt: new Date(),
+        paidAt: paymentDate,
         paymentIntentId: paymentMethod || "MANUAL",
         status: "CONFIRMED", // Atualiza status para confirmado quando pago
       },
     })
+
+    // Enviar e-mail de comprovante de pagamento
+    if (booking.customer.email) {
+      try {
+        // Formatar nomes dos equipamentos
+        const equipmentNames = booking.items.length > 0
+          ? booking.items.map(item => item.equipment.name).join(", ")
+          : booking.equipment?.name || "Equipamento"
+
+        // Formatar data para pt-BR
+        const formatDate = (date: Date) => date.toLocaleDateString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        })
+
+        const emailContent = emailTemplates.paymentReceipt({
+          customerName: booking.customer.name,
+          equipmentName: equipmentNames,
+          bookingId: booking.id,
+          amount: booking.totalPrice,
+          paymentDate: formatDate(paymentDate),
+          tenantName: booking.tenant.name,
+          paymentMethod: paymentMethodLabels[paymentMethod] || paymentMethod || "Pagamento Manual",
+        })
+
+        await sendEmail({
+          to: booking.customer.email,
+          subject: emailContent.subject,
+          html: emailContent.html,
+          from: EMAIL_FROM.FINANCEIRO,
+        })
+
+        console.log(`[PAYMENT] E-mail de comprovante enviado para ${booking.customer.email}`)
+      } catch (emailError) {
+        console.error("[PAYMENT] Erro ao enviar e-mail de comprovante:", emailError)
+        // Não falha a operação principal se o e-mail falhar
+      }
+    }
 
     return NextResponse.json({
       message: "Pagamento registrado com sucesso!",

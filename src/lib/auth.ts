@@ -1,5 +1,6 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
+import Google from "next-auth/providers/google"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 
@@ -27,6 +28,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         },
     },
     providers: [
+        Google({
+            clientId: process.env.GOOGLE_CLIENT_ID || "",
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+        }),
         Credentials({
             name: "Credentials",
             credentials: {
@@ -78,6 +83,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                         return null
                     }
 
+                    // Verifica se o usuário está ativo
+                    if (!user.active) {
+                        console.warn(`[AUTH] Usuário inativo: ${user.email}`)
+                        throw new Error("USER_INACTIVE")
+                    }
+
+                    // Verificar se usuário tem senha (pode não ter se usar login social)
+                    if (!user.passwordHash) {
+                        console.log("[AUTH] Usuário sem senha - provavelmente usa login social")
+                        return null
+                    }
+
                     // Verificar senha
                     const passwordMatch = await bcrypt.compare(
                         credentials.password as string,
@@ -114,6 +131,62 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         error: "/auth/error",
     },
     callbacks: {
+        async signIn({ user, account }) {
+            // Login via Google
+            if (account?.provider === "google") {
+                console.log("[AUTH GOOGLE] Tentando login com Google:", user.email)
+
+                if (!user.email) {
+                    console.log("[AUTH GOOGLE] Email não fornecido pelo Google")
+                    return false
+                }
+
+                // Buscar usuário existente pelo email
+                const existingUser = await prisma.user.findUnique({
+                    where: { email: user.email },
+                    include: { tenant: true },
+                })
+
+                if (!existingUser) {
+                    // Usuário não existe - precisa ser convidado primeiro
+                    console.log("[AUTH GOOGLE] Usuário não encontrado:", user.email)
+                    return "/login?error=NoAccount"
+                }
+
+                // Verificar se tenant está ativo
+                if (existingUser.role !== "SUPER_ADMIN" && !existingUser.tenant.active) {
+                    console.warn(`[AUTH GOOGLE] Tenant inativo: ${existingUser.tenant.slug}`)
+                    return "/login?error=TenantInactive"
+                }
+
+                // Verificar se usuário está ativo
+                if (!existingUser.active) {
+                    console.warn(`[AUTH GOOGLE] Usuário inativo: ${user.email}`)
+                    return "/login?error=UserInactive"
+                }
+
+                // Atualizar googleId e avatarUrl se ainda não estiver vinculado
+                if (!existingUser.googleId) {
+                    await prisma.user.update({
+                        where: { id: existingUser.id },
+                        data: {
+                            googleId: account.providerAccountId,
+                            avatarUrl: user.image || null,
+                            provider: "google",
+                            emailVerified: true,
+                            emailVerifiedAt: existingUser.emailVerifiedAt || new Date(),
+                        },
+                    })
+                    console.log("[AUTH GOOGLE] Conta Google vinculada para:", user.email)
+                }
+
+                console.log("[AUTH GOOGLE] Login bem sucedido:", user.email)
+                return true
+            }
+
+            // Login via Credentials - já tratado no authorize
+            return true
+        },
         async session({ session, token }) {
             if (token && session.user) {
                 session.user.id = token.id as string
@@ -124,8 +197,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
             return session
         },
-        async jwt({ token, user }) {
-            if (user && user.id) {
+        async jwt({ token, user, account }) {
+            // Para login via Google, buscar dados do banco
+            if (account?.provider === "google" && user?.email) {
+                const dbUser = await prisma.user.findUnique({
+                    where: { email: user.email },
+                    include: { tenant: true },
+                })
+
+                if (dbUser) {
+                    token.id = dbUser.id
+                    token.tenantId = dbUser.tenantId
+                    token.tenantName = dbUser.tenant.name
+                    token.tenantSlug = dbUser.tenant.slug
+                    token.role = dbUser.role
+                }
+            }
+            // Para login via Credentials (dados já vêm do authorize)
+            else if (user && user.id) {
                 token.id = user.id
                 token.tenantId = user.tenantId
                 token.tenantName = user.tenantName

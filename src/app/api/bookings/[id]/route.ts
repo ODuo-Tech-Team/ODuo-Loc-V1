@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { revalidateBookings } from "@/lib/cache/revalidate"
+import { sendEmail, emailTemplates, EMAIL_FROM } from "@/lib/email"
 
 // GET - Buscar reserva por ID
 export async function GET(
@@ -328,6 +329,54 @@ export async function PUT(
       } catch (leadError) {
         console.error("Erro ao sincronizar lead:", leadError)
       }
+
+      // Enviar e-mail de cancelamento se reserva foi cancelada
+      if (status === "CANCELLED") {
+        try {
+          const customer = await prisma.customer.findUnique({
+            where: { id: existingBooking.customerId },
+            select: { name: true, email: true },
+          })
+
+          const tenant = await prisma.tenant.findUnique({
+            where: { id: session.user.tenantId },
+            select: { name: true, phone: true },
+          })
+
+          if (customer?.email) {
+            // Formatar nomes dos equipamentos
+            const equipmentNames = existingBooking.items.length > 0
+              ? existingBooking.items.map((item: { equipment: { name: string } }) => item.equipment.name).join(", ")
+              : existingBooking.equipment?.name || "Equipamento"
+
+            // Formatar data para pt-BR
+            const formatDate = (date: Date) => date.toLocaleDateString("pt-BR", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })
+
+            const emailContent = emailTemplates.bookingCancelled({
+              customerName: customer.name,
+              equipmentName: equipmentNames,
+              startDate: formatDate(existingBooking.startDate),
+              tenantName: tenant?.name || "ODuoLoc",
+              tenantPhone: tenant?.phone || undefined,
+              bookingId: existingBooking.id,
+            })
+
+            await sendEmail({
+              to: customer.email,
+              subject: emailContent.subject,
+              html: emailContent.html,
+              from: EMAIL_FROM.NOTIFICACOES,
+            })
+            console.log(`[EMAIL] E-mail de cancelamento enviado para ${customer.email}`)
+          }
+        } catch (emailError) {
+          console.error("[EMAIL] Erro ao enviar e-mail de cancelamento:", emailError)
+        }
+      }
     }
 
     return NextResponse.json({
@@ -369,7 +418,13 @@ export async function DELETE(
         tenantId: session.user.tenantId,
       },
       include: {
-        items: true,
+        items: {
+          include: {
+            equipment: {
+              select: { id: true, name: true },
+            },
+          },
+        },
         equipment: true,
       },
     })
@@ -521,6 +576,52 @@ export async function DELETE(
         }
       } catch (leadError) {
         console.error("Erro ao sincronizar lead:", leadError)
+      }
+
+      // Enviar e-mail de cancelamento ao cliente
+      try {
+        const customer = await prisma.customer.findUnique({
+          where: { id: existingBooking.customerId },
+          select: { name: true, email: true },
+        })
+
+        const tenant = await prisma.tenant.findUnique({
+          where: { id: session.user.tenantId },
+          select: { name: true, phone: true },
+        })
+
+        if (customer?.email) {
+          // Formatar nomes dos equipamentos
+          const equipmentNames = existingBooking.items.length > 0
+            ? existingBooking.items.map((item: { equipment: { name: string } }) => item.equipment.name).join(", ")
+            : existingBooking.equipment?.name || "Equipamento"
+
+          // Formatar data para pt-BR
+          const formatDate = (date: Date) => date.toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })
+
+          const emailContent = emailTemplates.bookingCancelled({
+            customerName: customer.name,
+            equipmentName: equipmentNames,
+            startDate: formatDate(existingBooking.startDate),
+            tenantName: tenant?.name || "ODuoLoc",
+            tenantPhone: tenant?.phone || undefined,
+            bookingId: existingBooking.id,
+          })
+
+          await sendEmail({
+            to: customer.email,
+            subject: emailContent.subject,
+            html: emailContent.html,
+            from: EMAIL_FROM.NOTIFICACOES,
+          })
+          console.log(`[EMAIL] E-mail de cancelamento enviado para ${customer.email}`)
+        }
+      } catch (emailError) {
+        console.error("[EMAIL] Erro ao enviar e-mail de cancelamento:", emailError)
       }
     }
 

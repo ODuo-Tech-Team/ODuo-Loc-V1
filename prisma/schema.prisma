@@ -89,11 +89,21 @@ model Tenant {
 model User {
   id              String    @id @default(cuid())
   email           String    @unique
-  passwordHash    String
+  passwordHash    String?   // Opcional para login social
   name            String
   role            Role      @default(ADMIN)
   emailVerified   Boolean   @default(false)
   emailVerifiedAt DateTime?
+
+  // Controle de status
+  active            Boolean   @default(true)
+  deactivatedAt     DateTime?
+  deactivatedReason String?
+
+  // Login Social
+  googleId  String? @unique
+  avatarUrl String?
+  provider  String  @default("credentials") // "credentials" | "google"
 
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)

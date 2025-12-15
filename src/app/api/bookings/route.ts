@@ -5,6 +5,7 @@ import { bookingItemSchema } from "@/lib/validations/stock"
 import { calculateRentalPrice } from "@/lib/pricing"
 import { checkBookingLimit } from "@/lib/plan-limits"
 import { revalidateBookings } from "@/lib/cache/revalidate"
+import { sendEmail, emailTemplates, EMAIL_FROM } from "@/lib/email"
 import { z } from "zod"
 
 // GET - Listar reservas
@@ -522,6 +523,51 @@ export async function POST(request: NextRequest) {
     } catch (leadError) {
       // Não falhar a criação do booking por erro no lead
       console.error("Erro ao sincronizar com módulo comercial:", leadError)
+    }
+
+    // Enviar e-mail de confirmação de reserva (não bloqueia a resposta)
+    if (booking && customer.email) {
+      try {
+        // Buscar dados do tenant
+        const tenant = await prisma.tenant.findUnique({
+          where: { id: session.user.tenantId },
+          select: { name: true, phone: true },
+        })
+
+        // Formatar nomes dos equipamentos
+        const equipmentNames = booking.items.length > 0
+          ? booking.items.map((item: { equipment: { name: string } }) => item.equipment.name).join(", ")
+          : booking.equipment?.name || "Equipamento"
+
+        // Formatar datas para pt-BR
+        const formatDate = (date: Date) => date.toLocaleDateString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        })
+
+        const emailContent = emailTemplates.bookingConfirmation({
+          customerName: customer.name,
+          equipmentName: equipmentNames,
+          startDate: formatDate(booking.startDate),
+          endDate: formatDate(booking.endDate),
+          totalPrice: booking.totalPrice,
+          tenantName: tenant?.name || "ODuoLoc",
+          tenantPhone: tenant?.phone || undefined,
+          bookingId: booking.id,
+        })
+
+        await sendEmail({
+          to: customer.email,
+          subject: emailContent.subject,
+          html: emailContent.html,
+          from: EMAIL_FROM.NOTIFICACOES,
+        })
+        console.log(`[EMAIL] E-mail de confirmação de reserva enviado para ${customer.email}`)
+      } catch (emailError) {
+        // Log do erro mas não falha a operação principal
+        console.error("[EMAIL] Erro ao enviar e-mail de confirmação:", emailError)
+      }
     }
 
     return NextResponse.json({ booking }, { status: 201 })

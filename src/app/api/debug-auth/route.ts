@@ -41,10 +41,12 @@ export async function POST(request: NextRequest) {
         debugInfo.tenantSlug = user.tenant.slug
         debugInfo.tenantName = user.tenant.name
         debugInfo.tenantActive = user.tenant.active
-        debugInfo.passwordHashPrefix = user.passwordHash.substring(0, 10) + "..."
+        debugInfo.hasPassword = !!user.passwordHash
+        debugInfo.provider = user.provider || "credentials"
+        debugInfo.passwordHashPrefix = user.passwordHash ? user.passwordHash.substring(0, 10) + "..." : "null"
 
-        // Testar senha
-        if (password) {
+        // Testar senha (apenas se usuário tem senha)
+        if (password && user.passwordHash) {
           const passwordMatch = await bcrypt.compare(password, user.passwordHash)
           debugInfo.passwordMatch = passwordMatch
 
@@ -53,6 +55,9 @@ export async function POST(request: NextRequest) {
             debugInfo.hashIsValid = user.passwordHash.startsWith("$2")
             debugInfo.hashLength = user.passwordHash.length
           }
+        } else if (password && !user.passwordHash) {
+          debugInfo.passwordMatch = false
+          debugInfo.passwordError = "Usuário não possui senha (usa login social)"
         }
 
         // Verificar se tenant está ativo

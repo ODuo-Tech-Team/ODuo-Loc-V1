@@ -5,6 +5,22 @@ const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null
 
+// Endereços de e-mail por categoria
+export const EMAIL_FROM = {
+  // E-mails automáticos do sistema (sem resposta)
+  NOREPLY: "ODuoLoc <noreply@oduoloc.com.br>",
+  // Suporte ao cliente
+  SUPORTE: "Suporte ODuoLoc <suporte@oduoloc.com.br>",
+  // E-mails financeiros (cobranças, faturas, pagamentos)
+  FINANCEIRO: "Financeiro ODuoLoc <financeiro@oduoloc.com.br>",
+  // Notificações de reservas e alertas
+  NOTIFICACOES: "Notificações ODuoLoc <notificacoes@oduoloc.com.br>",
+  // Convites de equipe e usuários
+  EQUIPE: "Equipe ODuoLoc <equipe@oduoloc.com.br>",
+  // Envio de documentos (contratos, recibos, NFS-e)
+  DOCUMENTOS: "Documentos ODuoLoc <documentos@oduoloc.com.br>",
+} as const
+
 interface SendEmailOptions {
   to: string | string[]
   subject: string
@@ -17,7 +33,7 @@ export async function sendEmail({
   to,
   subject,
   html,
-  from = "ODuo <noreply@resend.dev>",
+  from = EMAIL_FROM.NOREPLY,
   replyTo,
 }: SendEmailOptions) {
   if (!resend) {
@@ -538,6 +554,96 @@ export const emailTemplates = {
     `,
   }),
 
+  // Reserva alterada
+  bookingUpdated: (data: {
+    customerName: string
+    equipmentName: string
+    bookingId: string
+    changes: string[]
+    startDate: string
+    endDate: string
+    totalPrice: number
+    tenantName: string
+    tenantPhone?: string
+  }) => ({
+    subject: `Reserva Atualizada - #${data.bookingId.slice(-6)} | ${data.tenantName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>${baseStyles}
+            .header { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%); }
+          </style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="container">
+              <div class="header">
+                <h1 class="logo">${data.tenantName}</h1>
+                <p class="logo-subtitle">Locação de Equipamentos</p>
+                <h2 class="header-title">Reserva Atualizada</h2>
+              </div>
+
+              <div class="content">
+                <p class="greeting">Olá <strong>${data.customerName}</strong>,</p>
+                <p class="message">Sua reserva foi atualizada. Confira os detalhes abaixo:</p>
+
+                <div class="highlight-box" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.1) 100%); border-color: rgba(59, 130, 246, 0.3);">
+                  <p class="highlight-text" style="font-size: 13px; text-align: left;">
+                    <strong style="color: #3b82f6;">Alterações realizadas:</strong><br>
+                    ${data.changes.map(change => `• ${change}`).join('<br>')}
+                  </p>
+                </div>
+
+                <div class="details-card">
+                  <h3 class="details-title" style="color: #3b82f6; border-color: rgba(59, 130, 246, 0.2);">Dados Atualizados</h3>
+                  <div class="details-row">
+                    <span class="details-label">Nº da Reserva</span>
+                    <span class="details-value">#${data.bookingId.slice(-8).toUpperCase()}</span>
+                  </div>
+                  <div class="details-row">
+                    <span class="details-label">Equipamento</span>
+                    <span class="details-value">${data.equipmentName}</span>
+                  </div>
+                  <div class="details-row">
+                    <span class="details-label">Data de Início</span>
+                    <span class="details-value">${data.startDate}</span>
+                  </div>
+                  <div class="details-row">
+                    <span class="details-label">Data de Término</span>
+                    <span class="details-value">${data.endDate}</span>
+                  </div>
+                  <div class="total-row" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%);">
+                    <div class="details-row" style="border: none; padding: 0;">
+                      <span class="details-label" style="font-size: 14px;">Valor Total</span>
+                      <span class="total-value" style="color: #3b82f6;">R$ ${data.totalPrice.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <p class="message">
+                  Em caso de dúvidas sobre as alterações, entre em contato conosco${data.tenantPhone ? ` pelo telefone <strong style="color: #fafafa;">${data.tenantPhone}</strong>` : ''}.
+                </p>
+
+                <div class="signature">
+                  <p class="signature-text">Atenciosamente,</p>
+                  <p class="signature-name">${data.tenantName}</p>
+                </div>
+              </div>
+
+              <div class="footer">
+                <p class="footer-text">Este é um email automático, por favor não responda.</p>
+                <p class="footer-brand">Powered by ODuoLoc</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  }),
+
   // Reset de senha
   passwordReset: (data: {
     userName: string
@@ -837,6 +943,756 @@ export const emailTemplates = {
               <div class="footer">
                 <p class="footer-text">Este é um email automático, por favor não responda.</p>
                 <p class="footer-brand">Powered by ODuo</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  }),
+
+  // Convite para equipe
+  userInvitation: (data: {
+    inviteeName: string
+    inviterName: string
+    tenantName: string
+    role: string
+    inviteUrl: string
+    expiresIn: string
+  }) => ({
+    subject: `Você foi convidado para ${data.tenantName} | ODuoLoc`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>${baseStyles}
+            .header { background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #4f46e5 100%); }
+          </style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="container">
+              <div class="header">
+                <h1 class="logo">ODuoLoc</h1>
+                <p class="logo-subtitle">Gestão de Locações</p>
+                <h2 class="header-title">Você foi convidado!</h2>
+              </div>
+
+              <div class="content">
+                <p class="greeting">Olá <strong>${data.inviteeName}</strong>,</p>
+                <p class="message"><strong>${data.inviterName}</strong> convidou você para fazer parte da equipe da <strong>${data.tenantName}</strong> no ODuoLoc.</p>
+
+                <div class="details-card">
+                  <h3 class="details-title" style="color: #8b5cf6; border-color: rgba(139, 92, 246, 0.2);">Detalhes do Convite</h3>
+                  <div class="details-row">
+                    <span class="details-label">Empresa</span>
+                    <span class="details-value">${data.tenantName}</span>
+                  </div>
+                  <div class="details-row">
+                    <span class="details-label">Função</span>
+                    <span class="details-value">${data.role}</span>
+                  </div>
+                  <div class="details-row">
+                    <span class="details-label">Convidado por</span>
+                    <span class="details-value">${data.inviterName}</span>
+                  </div>
+                </div>
+
+                <div style="text-align: center; margin: 32px 0;">
+                  <a href="${data.inviteUrl}" class="button" style="background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); box-shadow: 0 4px 14px rgba(139, 92, 246, 0.3);">
+                    Aceitar Convite
+                  </a>
+                </div>
+
+                <div class="warning-box">
+                  <p class="highlight-text" style="font-size: 13px;">
+                    Este convite expira em <strong>${data.expiresIn}</strong>. Após aceitar, você poderá definir sua senha e acessar o sistema.
+                  </p>
+                </div>
+
+                <p class="message" style="font-size: 12px; color: #71717a;">
+                  Se você não esperava este convite, pode ignorar este email com segurança.
+                </p>
+
+                <div class="signature">
+                  <p class="signature-text">Atenciosamente,</p>
+                  <p class="signature-name">Equipe ODuoLoc</p>
+                </div>
+              </div>
+
+              <div class="footer">
+                <p class="footer-text">Este é um email automático, por favor não responda.</p>
+                <p class="footer-brand">Powered by ODuoLoc</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  }),
+
+  // Boas-vindas ao tenant (após cadastro da empresa)
+  tenantWelcome: (data: {
+    ownerName: string
+    tenantName: string
+    tenantSlug: string
+    loginUrl: string
+    planName: string
+  }) => ({
+    subject: `Bem-vindo ao ODuoLoc, ${data.tenantName}!`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>${baseStyles}</style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="container">
+              <div class="header">
+                <h1 class="logo">ODuoLoc</h1>
+                <p class="logo-subtitle">Gestão de Locações</p>
+                <h2 class="header-title">Bem-vindo ao ODuoLoc!</h2>
+              </div>
+
+              <div class="content">
+                <p class="greeting">Olá <strong>${data.ownerName}</strong>,</p>
+                <p class="message">Parabéns! A <strong>${data.tenantName}</strong> agora faz parte do ODuoLoc, a plataforma mais completa para gestão de locadoras de equipamentos.</p>
+
+                <div class="success-box">
+                  <p class="highlight-text">
+                    🎉 Sua conta está ativa e pronta para uso!
+                  </p>
+                </div>
+
+                <div class="details-card">
+                  <h3 class="details-title">Dados da sua conta</h3>
+                  <div class="details-row">
+                    <span class="details-label">Empresa</span>
+                    <span class="details-value">${data.tenantName}</span>
+                  </div>
+                  <div class="details-row">
+                    <span class="details-label">Seu endereço</span>
+                    <span class="details-value">${data.tenantSlug}.oduoloc.com.br</span>
+                  </div>
+                  <div class="details-row">
+                    <span class="details-label">Plano</span>
+                    <span class="details-value">${data.planName}</span>
+                  </div>
+                </div>
+
+                <div style="text-align: center; margin: 32px 0;">
+                  <a href="${data.loginUrl}" class="button">
+                    Acessar Meu Painel
+                  </a>
+                </div>
+
+                <div class="details-card">
+                  <h3 class="details-title">Primeiros passos</h3>
+                  <div style="padding: 8px 0;">
+                    <p style="font-size: 14px; color: #fafafa; margin: 12px 0;">✅ <strong>1. Configure sua empresa</strong> - Adicione logo, dados fiscais e informações de contato</p>
+                    <p style="font-size: 14px; color: #fafafa; margin: 12px 0;">✅ <strong>2. Cadastre equipamentos</strong> - Adicione seu catálogo de equipamentos para locação</p>
+                    <p style="font-size: 14px; color: #fafafa; margin: 12px 0;">✅ <strong>3. Adicione clientes</strong> - Importe ou cadastre sua base de clientes</p>
+                    <p style="font-size: 14px; color: #fafafa; margin: 12px 0;">✅ <strong>4. Crie reservas</strong> - Comece a gerenciar suas locações!</p>
+                  </div>
+                </div>
+
+                <div class="highlight-box">
+                  <p class="highlight-text">
+                    Precisa de ajuda? Nossa equipe está disponível em <strong>suporte@oduoloc.com.br</strong>
+                  </p>
+                </div>
+
+                <div class="signature">
+                  <p class="signature-text">Atenciosamente,</p>
+                  <p class="signature-name">Equipe ODuoLoc</p>
+                </div>
+              </div>
+
+              <div class="footer">
+                <p class="footer-text">Este é um email automático, por favor não responda.</p>
+                <p class="footer-brand">Powered by ODuoLoc</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  }),
+
+  // Conta desativada
+  userDeactivated: (data: {
+    userName: string
+    tenantName: string
+    reason?: string
+    supportEmail: string
+  }) => ({
+    subject: `Sua conta foi desativada | ${data.tenantName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>${baseStyles}
+            .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%); }
+          </style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="container">
+              <div class="header">
+                <h1 class="logo">ODuoLoc</h1>
+                <p class="logo-subtitle">Gestão de Locações</p>
+                <h2 class="header-title">Conta Desativada</h2>
+              </div>
+
+              <div class="content">
+                <p class="greeting">Olá <strong>${data.userName}</strong>,</p>
+                <p class="message">Informamos que sua conta na <strong>${data.tenantName}</strong> foi desativada pelo administrador.</p>
+
+                <div class="error-box">
+                  <p class="highlight-text">
+                    Você não poderá mais acessar o sistema até que sua conta seja reativada.
+                  </p>
+                </div>
+
+                ${data.reason ? `
+                <div class="details-card">
+                  <h3 class="details-title" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">Motivo</h3>
+                  <p style="font-size: 14px; color: #a1a1aa; margin: 0;">${data.reason}</p>
+                </div>
+                ` : ''}
+
+                <div class="highlight-box" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.1) 100%); border-color: rgba(239, 68, 68, 0.3);">
+                  <p class="highlight-text">
+                    Se você acredita que isso foi um erro, entre em contato com o administrador da empresa ou com nosso suporte em <strong>${data.supportEmail}</strong>.
+                  </p>
+                </div>
+
+                <div class="signature">
+                  <p class="signature-text">Atenciosamente,</p>
+                  <p class="signature-name">Equipe ODuoLoc</p>
+                </div>
+              </div>
+
+              <div class="footer">
+                <p class="footer-text">Este é um email automático, por favor não responda.</p>
+                <p class="footer-brand">Powered by ODuoLoc</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  }),
+
+  // Conta reativada
+  userReactivated: (data: {
+    userName: string
+    tenantName: string
+    loginUrl: string
+  }) => ({
+    subject: `Sua conta foi reativada | ${data.tenantName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>${baseStyles}
+            .header { background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%); }
+          </style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="container">
+              <div class="header">
+                <h1 class="logo">ODuoLoc</h1>
+                <p class="logo-subtitle">Gestão de Locações</p>
+                <h2 class="header-title">Conta Reativada!</h2>
+              </div>
+
+              <div class="content">
+                <p class="greeting">Olá <strong>${data.userName}</strong>,</p>
+                <p class="message">Ótimas notícias! Sua conta na <strong>${data.tenantName}</strong> foi reativada pelo administrador.</p>
+
+                <div class="success-box">
+                  <p class="highlight-text">
+                    🎉 Você já pode acessar o sistema normalmente!
+                  </p>
+                </div>
+
+                <div style="text-align: center; margin: 32px 0;">
+                  <a href="${data.loginUrl}" class="button" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);">
+                    Acessar o Painel
+                  </a>
+                </div>
+
+                <p class="message">
+                  Se você tiver alguma dúvida, entre em contato com o administrador da sua empresa.
+                </p>
+
+                <div class="signature">
+                  <p class="signature-text">Atenciosamente,</p>
+                  <p class="signature-name">Equipe ODuoLoc</p>
+                </div>
+              </div>
+
+              <div class="footer">
+                <p class="footer-text">Este é um email automático, por favor não responda.</p>
+                <p class="footer-brand">Powered by ODuoLoc</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  }),
+
+  // Lembrete de devolução
+  returnReminder: (data: {
+    customerName: string
+    equipmentName: string
+    endDate: string
+    daysUntilReturn: number
+    tenantName: string
+    tenantPhone?: string
+    bookingId?: string
+  }) => ({
+    subject: `Lembrete: Devolução em ${data.daysUntilReturn} dia${data.daysUntilReturn > 1 ? 's' : ''} - ${data.equipmentName} | ${data.tenantName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>${baseStyles}
+            .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%); }
+          </style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="container">
+              <div class="header">
+                <h1 class="logo">${data.tenantName}</h1>
+                <p class="logo-subtitle">Locação de Equipamentos</p>
+                <h2 class="header-title">Lembrete de Devolução</h2>
+              </div>
+
+              <div class="content">
+                <p class="greeting">Olá <strong>${data.customerName}</strong>,</p>
+
+                <div class="warning-box">
+                  <p class="highlight-text">
+                    O prazo de devolução do equipamento <strong>${data.equipmentName}</strong> termina em <strong>${data.daysUntilReturn} dia${data.daysUntilReturn > 1 ? 's' : ''}</strong> (${data.endDate}).
+                  </p>
+                </div>
+
+                ${data.bookingId ? `
+                <div class="details-card">
+                  <h3 class="details-title" style="color: #f59e0b; border-color: rgba(245, 158, 11, 0.2);">Detalhes da Locação</h3>
+                  <div class="details-row">
+                    <span class="details-label">Nº da Reserva</span>
+                    <span class="details-value">#${data.bookingId.slice(-8).toUpperCase()}</span>
+                  </div>
+                  <div class="details-row">
+                    <span class="details-label">Equipamento</span>
+                    <span class="details-value">${data.equipmentName}</span>
+                  </div>
+                  <div class="details-row">
+                    <span class="details-label">Data de Devolução</span>
+                    <span class="details-value">${data.endDate}</span>
+                  </div>
+                </div>
+                ` : ''}
+
+                <p class="message">
+                  Por favor, prepare o equipamento para devolução. Caso precise estender o período de locação, entre em contato conosco${data.tenantPhone ? ` pelo telefone <strong style="color: #fafafa;">${data.tenantPhone}</strong>` : ''}.
+                </p>
+
+                <div class="highlight-box" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.1) 100%); border-color: rgba(245, 158, 11, 0.3);">
+                  <p class="highlight-text">
+                    Lembre-se: equipamentos devolvidos após a data podem incorrer em taxas adicionais.
+                  </p>
+                </div>
+
+                <div class="signature">
+                  <p class="signature-text">Atenciosamente,</p>
+                  <p class="signature-name">${data.tenantName}</p>
+                </div>
+              </div>
+
+              <div class="footer">
+                <p class="footer-text">Este é um email automático, por favor não responda.</p>
+                <p class="footer-brand">Powered by ODuoLoc</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  }),
+
+  // Pagamento atrasado
+  paymentOverdue: (data: {
+    customerName: string
+    equipmentName: string
+    bookingId: string
+    amount: number
+    dueDate: string
+    daysOverdue: number
+    tenantName: string
+    tenantPhone?: string
+  }) => ({
+    subject: `URGENTE: Pagamento em atraso - Reserva #${data.bookingId.slice(-6)} | ${data.tenantName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>${baseStyles}
+            .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%); }
+          </style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="container">
+              <div class="header">
+                <h1 class="logo">${data.tenantName}</h1>
+                <p class="logo-subtitle">Locação de Equipamentos</p>
+                <h2 class="header-title">Pagamento em Atraso</h2>
+              </div>
+
+              <div class="content">
+                <p class="greeting">Olá <strong>${data.customerName}</strong>,</p>
+
+                <div class="error-box">
+                  <p class="highlight-text">
+                    O pagamento referente à locação do equipamento <strong>${data.equipmentName}</strong> está em atraso há <strong>${data.daysOverdue} dia${data.daysOverdue > 1 ? 's' : ''}</strong>.
+                  </p>
+                </div>
+
+                <div class="details-card">
+                  <h3 class="details-title" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">Detalhes do Débito</h3>
+                  <div class="details-row">
+                    <span class="details-label">Nº da Reserva</span>
+                    <span class="details-value">#${data.bookingId.slice(-8).toUpperCase()}</span>
+                  </div>
+                  <div class="details-row">
+                    <span class="details-label">Equipamento</span>
+                    <span class="details-value">${data.equipmentName}</span>
+                  </div>
+                  <div class="details-row">
+                    <span class="details-label">Vencimento</span>
+                    <span class="details-value">${data.dueDate}</span>
+                  </div>
+                  <div class="details-row">
+                    <span class="details-label">Dias em Atraso</span>
+                    <span class="details-value" style="color: #ef4444;">${data.daysOverdue} dia${data.daysOverdue > 1 ? 's' : ''}</span>
+                  </div>
+                  <div class="total-row" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%);">
+                    <div class="details-row" style="border: none; padding: 0;">
+                      <span class="details-label" style="font-size: 14px;">Valor em Aberto</span>
+                      <span class="total-value" style="color: #ef4444;">R$ ${data.amount.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="highlight-box" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.1) 100%); border-color: rgba(239, 68, 68, 0.3);">
+                  <p class="highlight-text">
+                    <strong>Atenção:</strong> Regularize seu pagamento o mais rápido possível para evitar a suspensão de futuros serviços e possíveis encargos por atraso.
+                  </p>
+                </div>
+
+                <p class="message">
+                  Para efetuar o pagamento ou esclarecer dúvidas, entre em contato conosco${data.tenantPhone ? ` pelo telefone <strong style="color: #fafafa;">${data.tenantPhone}</strong>` : ''}.
+                </p>
+
+                <div class="signature">
+                  <p class="signature-text">Atenciosamente,</p>
+                  <p class="signature-name">${data.tenantName}</p>
+                </div>
+              </div>
+
+              <div class="footer">
+                <p class="footer-text">Este é um email automático, por favor não responda.</p>
+                <p class="footer-brand">Powered by ODuoLoc</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  }),
+
+  // Reserva atrasada (equipamento não devolvido)
+  bookingOverdue: (data: {
+    customerName: string
+    equipmentName: string
+    endDate: string
+    daysOverdue: number
+    tenantName: string
+    tenantPhone?: string
+    bookingId?: string
+  }) => ({
+    subject: `URGENTE: Equipamento com devolução atrasada - ${data.equipmentName} | ${data.tenantName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>${baseStyles}
+            .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%); }
+          </style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="container">
+              <div class="header">
+                <h1 class="logo">${data.tenantName}</h1>
+                <p class="logo-subtitle">Locação de Equipamentos</p>
+                <h2 class="header-title">Devolução Atrasada</h2>
+              </div>
+
+              <div class="content">
+                <p class="greeting">Olá <strong>${data.customerName}</strong>,</p>
+
+                <div class="error-box">
+                  <p class="highlight-text">
+                    O equipamento <strong>${data.equipmentName}</strong> está com a devolução atrasada há <strong>${data.daysOverdue} dia${data.daysOverdue > 1 ? 's' : ''}</strong>.
+                  </p>
+                </div>
+
+                ${data.bookingId ? `
+                <div class="details-card">
+                  <h3 class="details-title" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">Detalhes da Locação</h3>
+                  <div class="details-row">
+                    <span class="details-label">Nº da Reserva</span>
+                    <span class="details-value">#${data.bookingId.slice(-8).toUpperCase()}</span>
+                  </div>
+                  <div class="details-row">
+                    <span class="details-label">Equipamento</span>
+                    <span class="details-value">${data.equipmentName}</span>
+                  </div>
+                  <div class="details-row">
+                    <span class="details-label">Data Prevista</span>
+                    <span class="details-value">${data.endDate}</span>
+                  </div>
+                  <div class="details-row">
+                    <span class="details-label">Dias em Atraso</span>
+                    <span class="details-value" style="color: #ef4444;">${data.daysOverdue} dia${data.daysOverdue > 1 ? 's' : ''}</span>
+                  </div>
+                </div>
+                ` : ''}
+
+                <div class="highlight-box" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.1) 100%); border-color: rgba(239, 68, 68, 0.3);">
+                  <p class="highlight-text">
+                    <strong>Importante:</strong> Equipamentos em atraso estão sujeitos a cobrança de diárias adicionais. Entre em contato imediatamente para regularizar a situação.
+                  </p>
+                </div>
+
+                <p class="message">
+                  Por favor, entre em contato conosco o mais rápido possível${data.tenantPhone ? ` pelo telefone <strong style="color: #fafafa;">${data.tenantPhone}</strong>` : ''} para agendar a devolução ou renovar a locação.
+                </p>
+
+                <div class="signature">
+                  <p class="signature-text">Atenciosamente,</p>
+                  <p class="signature-name">${data.tenantName}</p>
+                </div>
+              </div>
+
+              <div class="footer">
+                <p class="footer-text">Este é um email automático, por favor não responda.</p>
+                <p class="footer-brand">Powered by ODuoLoc</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  }),
+
+  // Assinatura expirando
+  subscriptionExpiring: (data: {
+    ownerName: string
+    tenantName: string
+    planName: string
+    expirationDate: string
+    daysUntilExpiration: number
+    renewUrl: string
+  }) => ({
+    subject: `Sua assinatura expira em ${data.daysUntilExpiration} dia${data.daysUntilExpiration > 1 ? 's' : ''} | ODuoLoc`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>${baseStyles}
+            .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%); }
+          </style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="container">
+              <div class="header">
+                <h1 class="logo">ODuoLoc</h1>
+                <p class="logo-subtitle">Gestão de Locações</p>
+                <h2 class="header-title">Assinatura Expirando</h2>
+              </div>
+
+              <div class="content">
+                <p class="greeting">Olá <strong>${data.ownerName}</strong>,</p>
+
+                <div class="warning-box">
+                  <p class="highlight-text">
+                    A assinatura da <strong>${data.tenantName}</strong> expira em <strong>${data.daysUntilExpiration} dia${data.daysUntilExpiration > 1 ? 's' : ''}</strong> (${data.expirationDate}).
+                  </p>
+                </div>
+
+                <div class="details-card">
+                  <h3 class="details-title" style="color: #f59e0b; border-color: rgba(245, 158, 11, 0.2);">Detalhes da Assinatura</h3>
+                  <div class="details-row">
+                    <span class="details-label">Empresa</span>
+                    <span class="details-value">${data.tenantName}</span>
+                  </div>
+                  <div class="details-row">
+                    <span class="details-label">Plano Atual</span>
+                    <span class="details-value">${data.planName}</span>
+                  </div>
+                  <div class="details-row">
+                    <span class="details-label">Vencimento</span>
+                    <span class="details-value">${data.expirationDate}</span>
+                  </div>
+                </div>
+
+                <div style="text-align: center; margin: 32px 0;">
+                  <a href="${data.renewUrl}" class="button" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);">
+                    Renovar Assinatura
+                  </a>
+                </div>
+
+                <div class="highlight-box" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.1) 100%); border-color: rgba(245, 158, 11, 0.3);">
+                  <p class="highlight-text" style="font-size: 13px;">
+                    <strong>Importante:</strong> Após o vencimento, o acesso ao sistema será suspenso até a regularização. Renove agora para garantir continuidade no serviço.
+                  </p>
+                </div>
+
+                <div class="signature">
+                  <p class="signature-text">Atenciosamente,</p>
+                  <p class="signature-name">Equipe ODuoLoc</p>
+                </div>
+              </div>
+
+              <div class="footer">
+                <p class="footer-text">Este é um email automático, por favor não responda.</p>
+                <p class="footer-brand">Powered by ODuoLoc</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  }),
+
+  // NFS-e emitida
+  invoiceIssued: (data: {
+    customerName: string
+    invoiceNumber: string
+    bookingId: string
+    equipmentName: string
+    amount: number
+    issueDate: string
+    tenantName: string
+    verificationUrl?: string
+  }) => ({
+    subject: `NFS-e Emitida - Nº ${data.invoiceNumber} | ${data.tenantName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>${baseStyles}
+            .header { background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%); }
+          </style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="container">
+              <div class="header">
+                <h1 class="logo">${data.tenantName}</h1>
+                <p class="logo-subtitle">Locação de Equipamentos</p>
+                <h2 class="header-title">NFS-e Emitida</h2>
+              </div>
+
+              <div class="content">
+                <p class="greeting">Olá <strong>${data.customerName}</strong>,</p>
+                <p class="message">A Nota Fiscal de Serviço Eletrônica (NFS-e) referente à sua locação foi emitida com sucesso.</p>
+
+                <div class="success-box">
+                  <div style="text-align: center;">
+                    <p style="font-size: 14px; color: #10b981; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px;">Número da Nota</p>
+                    <p style="font-size: 28px; font-weight: 700; color: #10b981; margin: 0;">${data.invoiceNumber}</p>
+                  </div>
+                </div>
+
+                <div class="details-card">
+                  <h3 class="details-title" style="color: #10b981; border-color: rgba(16, 185, 129, 0.2);">Detalhes da NFS-e</h3>
+                  <div class="details-row">
+                    <span class="details-label">Nº da NFS-e</span>
+                    <span class="details-value">${data.invoiceNumber}</span>
+                  </div>
+                  <div class="details-row">
+                    <span class="details-label">Reserva</span>
+                    <span class="details-value">#${data.bookingId.slice(-8).toUpperCase()}</span>
+                  </div>
+                  <div class="details-row">
+                    <span class="details-label">Serviço</span>
+                    <span class="details-value">${data.equipmentName}</span>
+                  </div>
+                  <div class="details-row">
+                    <span class="details-label">Data de Emissão</span>
+                    <span class="details-value">${data.issueDate}</span>
+                  </div>
+                  <div class="total-row" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);">
+                    <div class="details-row" style="border: none; padding: 0;">
+                      <span class="details-label" style="font-size: 14px;">Valor Total</span>
+                      <span class="total-value" style="color: #10b981;">R$ ${data.amount.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                ${data.verificationUrl ? `
+                <div style="text-align: center; margin: 32px 0;">
+                  <a href="${data.verificationUrl}" class="button" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);">
+                    Verificar Autenticidade
+                  </a>
+                </div>
+                ` : ''}
+
+                <div class="highlight-box" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%); border-color: rgba(16, 185, 129, 0.3);">
+                  <p class="highlight-text">
+                    Guarde este email para sua referência. A NFS-e é um documento fiscal válido.
+                  </p>
+                </div>
+
+                <div class="signature">
+                  <p class="signature-text">Atenciosamente,</p>
+                  <p class="signature-name">${data.tenantName}</p>
+                </div>
+              </div>
+
+              <div class="footer">
+                <p class="footer-text">Este é um email automático, por favor não responda.</p>
+                <p class="footer-brand">Powered by ODuoLoc</p>
               </div>
             </div>
           </div>

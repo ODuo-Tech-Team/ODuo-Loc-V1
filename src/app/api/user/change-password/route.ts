@@ -47,6 +47,14 @@ export async function POST(request: Request) {
       )
     }
 
+    // Verificar se usuário tem senha (pode usar login social)
+    if (!user.passwordHash) {
+      return NextResponse.json(
+        { error: "Este usuário usa login social e não possui senha. Configure uma senha primeiro." },
+        { status: 400 }
+      )
+    }
+
     // Verificar senha atual
     const passwordMatch = await bcrypt.compare(currentPassword, user.passwordHash)
 

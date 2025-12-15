@@ -21,7 +21,9 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Edit, Trash2, Mail, Shield } from "lucide-react"
+import { Plus, Search, Edit, Trash2, Mail, Shield, UserCheck, UserX } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { toast } from "sonner"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +41,9 @@ interface User {
   name: string
   email: string
   role: Role
+  active: boolean
+  deactivatedAt?: string
+  deactivatedReason?: string
   createdAt: string
   updatedAt: string
 }
@@ -65,6 +70,7 @@ export default function UsuariosPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [togglingUserId, setTogglingUserId] = useState<string | null>(null)
 
   const canEdit = session?.user?.role && hasPermission(session.user.role as Role, 'EDIT_USER')
   const canDelete = session?.user?.role && hasPermission(session.user.role as Role, 'DELETE_USER')
@@ -103,13 +109,39 @@ export default function UsuariosPage() {
       if (response.ok) {
         setUsers(users.filter((u) => u.id !== deleteId))
         setDeleteId(null)
+        toast.success("Usuário excluído com sucesso")
       } else {
         const data = await response.json()
-        alert(data.error || "Erro ao excluir usuário")
+        toast.error(data.error || "Erro ao excluir usuário")
       }
     } catch (error) {
       console.error("Error deleting user:", error)
-      alert("Erro ao excluir usuário")
+      toast.error("Erro ao excluir usuário")
+    }
+  }
+
+  const handleToggleStatus = async (userId: string, currentActive: boolean) => {
+    setTogglingUserId(userId)
+    try {
+      const response = await fetch(`/api/users/${userId}/toggle-status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ active: !currentActive }),
+      })
+
+      if (response.ok) {
+        const updatedUser = await response.json()
+        setUsers(users.map((u) => (u.id === userId ? { ...u, ...updatedUser } : u)))
+        toast.success(updatedUser.active ? "Usuário ativado" : "Usuário desativado")
+      } else {
+        const data = await response.json()
+        toast.error(data.error || "Erro ao alterar status")
+      }
+    } catch (error) {
+      console.error("Error toggling user status:", error)
+      toast.error("Erro ao alterar status do usuário")
+    } finally {
+      setTogglingUserId(null)
     }
   }
 
@@ -171,6 +203,7 @@ export default function UsuariosPage() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Função</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Cadastro</TableHead>
                   {(canEdit || canDelete) && (
                     <TableHead className="text-right">Ações</TableHead>
@@ -180,13 +213,13 @@ export default function UsuariosPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8">
+                    <TableCell colSpan={6} className="text-center py-8">
                       Carregando usuários...
                     </TableCell>
                   </TableRow>
                 ) : users.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8">
+                    <TableCell colSpan={6} className="text-center py-8">
                       Nenhum usuário encontrado.
                       {canCreate && (
                         <>
@@ -219,6 +252,27 @@ export default function UsuariosPage() {
                         <Badge variant={roleColors[user.role]}>
                           {roleLabels[user.role]}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {/* Só mostra switch para usuários não-admin e não é o próprio usuário */}
+                          {canEdit && user.role !== "ADMIN" && user.role !== "SUPER_ADMIN" && user.id !== session?.user?.id ? (
+                            <Switch
+                              checked={user.active}
+                              disabled={togglingUserId === user.id}
+                              onCheckedChange={() => handleToggleStatus(user.id, user.active)}
+                            />
+                          ) : (
+                            user.active ? (
+                              <UserCheck className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <UserX className="h-4 w-4 text-red-500" />
+                            )
+                          )}
+                          <span className={`text-sm ${user.active ? 'text-green-600' : 'text-red-500'}`}>
+                            {user.active ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm text-muted-foreground">

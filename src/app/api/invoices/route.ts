@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { hasPermission, type Role } from '@/lib/permissions'
 import { nfseService, requireNfseEnabled } from '@/lib/fiscal'
+import { sendEmail, emailTemplates, EMAIL_FROM } from '@/lib/email'
 
 // GET - Listar NFS-e do tenant
 export async function GET(request: NextRequest) {
@@ -182,7 +183,78 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    if (result.success) {
+    if (result.success && result.invoice && sendEmail) {
+      // Enviar e-mail de NFS-e emitida para o cliente
+      try {
+        // Buscar invoice completa com todos os dados
+        const invoice = await prisma.invoice.findUnique({
+          where: { id: result.invoice.id },
+        })
+
+        const booking = await prisma.booking.findUnique({
+          where: { id: bookingId },
+          include: {
+            customer: {
+              select: { name: true, email: true },
+            },
+            tenant: {
+              select: { name: true },
+            },
+            items: {
+              include: {
+                equipment: {
+                  select: { name: true },
+                },
+              },
+            },
+            equipment: {
+              select: { name: true },
+            },
+          },
+        })
+
+        if (booking?.customer.email && invoice?.numero) {
+          // Formatar nomes dos equipamentos
+          const equipmentNames = booking.items.length > 0
+            ? booking.items.map(item => item.equipment.name).join(", ")
+            : booking.equipment?.name || "Locação de Equipamento"
+
+          // Formatar data para pt-BR
+          const formatDate = (date: Date) => date.toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })
+
+          const emailContent = emailTemplates.invoiceIssued({
+            customerName: booking.customer.name,
+            invoiceNumber: invoice.numero,
+            bookingId: booking.id,
+            equipmentName: equipmentNames,
+            amount: invoice.valorTotal || booking.totalPrice,
+            issueDate: formatDate(invoice.createdAt),
+            tenantName: booking.tenant.name,
+            verificationUrl: invoice.codigoVerificacao
+              ? `https://nfse.focusnfe.com.br/${invoice.numero}/${invoice.codigoVerificacao}`
+              : undefined,
+          })
+
+          await sendEmail({
+            to: booking.customer.email,
+            subject: emailContent.subject,
+            html: emailContent.html,
+            from: EMAIL_FROM.DOCUMENTOS,
+          })
+
+          console.log(`[NFSE] E-mail de NFS-e enviado para ${booking.customer.email}`)
+        }
+      } catch (emailError) {
+        console.error('[NFSE] Erro ao enviar e-mail de NFS-e:', emailError)
+        // Não falha a operação principal se o e-mail falhar
+      }
+
+      return NextResponse.json(result, { status: 201 })
+    } else if (result.success) {
       return NextResponse.json(result, { status: 201 })
     } else {
       return NextResponse.json(result, { status: 400 })

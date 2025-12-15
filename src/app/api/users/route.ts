@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
+import { sendEmail, emailTemplates, EMAIL_FROM } from "@/lib/email"
 
 // GET - Listar usuários do tenant
 export async function GET() {
@@ -27,6 +28,9 @@ export async function GET() {
         email: true,
         role: true,
         emailVerified: true,
+        active: true,
+        deactivatedAt: true,
+        deactivatedReason: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -101,6 +105,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Buscar dados do tenant para o e-mail
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: session.user.tenantId },
+      select: { name: true, slug: true },
+    })
+
+    if (!tenant) {
+      return NextResponse.json(
+        { error: "Tenant não encontrado" },
+        { status: 404 }
+      )
+    }
+
+    // Buscar nome do admin que está criando
+    const inviter = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { name: true },
+    })
+
     // Hash da senha
     const passwordHash = await bcrypt.hash(password, 10)
 
@@ -122,6 +145,40 @@ export async function POST(request: NextRequest) {
         createdAt: true,
       },
     })
+
+    // Enviar e-mail de boas-vindas (não bloqueia a resposta)
+    try {
+      const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "oduoloc.com.br"
+      const loginUrl = `https://${tenant.slug}.${rootDomain}/login`
+
+      // Traduzir role para português
+      const roleLabels: Record<string, string> = {
+        ADMIN: "Administrador",
+        MANAGER: "Gerente",
+        OPERATOR: "Operador",
+        VIEWER: "Visualizador",
+      }
+
+      const emailContent = emailTemplates.userInvitation({
+        inviteeName: name,
+        inviterName: inviter?.name || "Administrador",
+        tenantName: tenant.name,
+        role: roleLabels[role] || role,
+        inviteUrl: loginUrl,
+        expiresIn: "imediatamente disponível",
+      })
+
+      await sendEmail({
+        to: email,
+        subject: emailContent.subject,
+        html: emailContent.html,
+        from: EMAIL_FROM.EQUIPE,
+      })
+      console.log(`[EMAIL] E-mail de convite enviado para ${email}`)
+    } catch (emailError) {
+      // Log do erro mas não falha a operação principal
+      console.error("[EMAIL] Erro ao enviar e-mail de convite:", emailError)
+    }
 
     return NextResponse.json(user, { status: 201 })
   } catch (error) {
