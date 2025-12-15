@@ -83,6 +83,9 @@ model Tenant {
 
   // Categorias de Equipamentos
   equipmentCategories EquipmentCategory[]
+
+  // WhatsApp
+  whatsappInstance WhatsAppInstance?
 }
 
 // Usuário (Admin da locadora)
@@ -117,6 +120,10 @@ model User {
   // Módulo Comercial
   leads          Lead[]
   leadActivities LeadActivity[]
+
+  // WhatsApp
+  assignedConversations WhatsAppConversation[] @relation("AssignedConversations")
+  sentMessages          WhatsAppMessage[]      @relation("SentMessages")
 
   // Blog
   blogPosts BlogPost[]
@@ -374,6 +381,9 @@ model Customer {
   tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   bookings Booking[]
   sites    CustomerSite[]
+
+  // WhatsApp
+  whatsappConversations WhatsAppConversation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1430,6 +1440,9 @@ model Lead {
   activities         LeadActivity[]
   equipmentInterests LeadEquipmentInterest[]
 
+  // WhatsApp
+  whatsappConversations WhatsAppConversation[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1511,6 +1524,244 @@ enum ActivityType {
   MEETING
   PROPOSAL
   OTHER
+}
+
+// ============================================
+// WHATSAPP - Módulo de Chat Integrado
+// ============================================
+
+// Instância WhatsApp por Tenant (via Uazapi)
+model WhatsAppInstance {
+  id String @id @default(cuid())
+
+  // Identificador da instância na Uazapi
+  instanceId   String
+  instanceName String
+
+  // Status da conexão
+  status      WhatsAppInstanceStatus @default(DISCONNECTED)
+  qrCode      String?                @db.Text
+  phoneNumber String?
+
+  // Configurações
+  settings Json @default("{}")
+
+  // Webhook URL (gerada automaticamente)
+  webhookUrl String?
+
+  // Relacionamentos
+  tenantId String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  conversations WhatsAppConversation[]
+  botConfig     WhatsAppBotConfig?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum WhatsAppInstanceStatus {
+  DISCONNECTED
+  CONNECTING
+  CONNECTED
+  BANNED
+}
+
+// Conversa/Thread de WhatsApp
+model WhatsAppConversation {
+  id String @id @default(cuid())
+
+  // Contato
+  contactPhone String
+  contactName  String?
+  profilePic   String?
+
+  // Status da conversa
+  status       ConversationStatus @default(OPEN)
+  unreadCount  Int                @default(0)
+  lastMessage  String?
+  lastMessageAt DateTime?
+
+  // Atendimento
+  isBot          Boolean @default(true) // Bot ativo nesta conversa
+  assignedToId   String?
+  assignedTo     User?   @relation("AssignedConversations", fields: [assignedToId], references: [id])
+  assignedAt     DateTime?
+  closedAt       DateTime?
+  closedByUserId String?
+
+  // Tags/Labels para organização
+  tags String[]
+
+  // Vinculação com CRM
+  leadId     String?
+  lead       Lead?     @relation(fields: [leadId], references: [id])
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  // Instância
+  instanceId String
+  instance   WhatsAppInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  // Tenant (para queries diretas)
+  tenantId String
+
+  messages WhatsAppMessage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([instanceId, contactPhone])
+  @@index([tenantId, status])
+  @@index([tenantId, lastMessageAt])
+  @@index([leadId])
+  @@index([customerId])
+}
+
+enum ConversationStatus {
+  OPEN
+  PENDING
+  RESOLVED
+  CLOSED
+}
+
+// Mensagem de WhatsApp
+model WhatsAppMessage {
+  id String @id @default(cuid())
+
+  // ID da mensagem na Uazapi/WhatsApp
+  externalId String? @unique
+
+  // Direção
+  direction MessageDirection
+
+  // Tipo e conteúdo
+  type    MessageType @default(TEXT)
+  content String?     @db.Text
+
+  // Mídia (para imagens, áudio, vídeo, documentos)
+  mediaUrl      String?
+  mediaType     String?
+  mediaFileName String?
+  mediaDuration Int? // Duração em segundos (áudio/vídeo)
+
+  // Status de entrega
+  status    MessageStatus @default(PENDING)
+  sentAt    DateTime?
+  deliveredAt DateTime?
+  readAt    DateTime?
+  failedAt  DateTime?
+  failedReason String?
+
+  // Metadados
+  isFromBot  Boolean @default(false)
+  quotedMessageId String? // Mensagem citada/respondida
+  metadata   Json?
+
+  // Relacionamentos
+  conversationId String
+  conversation   WhatsAppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  // Usuário que enviou (se foi mensagem manual)
+  sentByUserId String?
+  sentByUser   User?  @relation("SentMessages", fields: [sentByUserId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([conversationId, createdAt])
+  @@index([externalId])
+}
+
+enum MessageDirection {
+  INBOUND  // Recebida do cliente
+  OUTBOUND // Enviada para o cliente
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  AUDIO
+  VIDEO
+  DOCUMENT
+  STICKER
+  LOCATION
+  CONTACT
+  TEMPLATE
+}
+
+enum MessageStatus {
+  PENDING   // Aguardando envio
+  SENT      // Enviada (1 check)
+  DELIVERED // Entregue (2 checks)
+  READ      // Lida (2 checks azuis)
+  FAILED    // Falha no envio
+}
+
+// Template de resposta rápida
+model WhatsAppTemplate {
+  id String @id @default(cuid())
+
+  name     String
+  category String? // ex: "Saudação", "Orçamento", "Agendamento"
+  content  String  @db.Text
+
+  // Variáveis disponíveis: {{nome}}, {{empresa}}, etc.
+  variables String[]
+
+  // Atalho para uso rápido (ex: "/orcamento")
+  shortcut String?
+
+  tenantId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, shortcut])
+  @@index([tenantId])
+}
+
+// Configuração do Bot de IA
+model WhatsAppBotConfig {
+  id String @id @default(cuid())
+
+  // Status
+  enabled Boolean @default(false)
+
+  // OpenAI - Chave por tenant
+  openaiApiKey   String? @db.Text // Criptografada
+  openaiModel    String  @default("gpt-4o-mini") // gpt-4o-mini ou gpt-4o
+
+  // Configurações do modelo
+  temperature Float @default(0.7)
+  maxTokens   Int   @default(500)
+
+  // Prompt do sistema
+  systemPrompt String? @db.Text
+
+  // Comportamento
+  includeEquipmentCatalog Boolean @default(true)  // Incluir catálogo nas respostas
+  includeRentalPrices     Boolean @default(false) // Incluir preços
+  autoCreateLeads         Boolean @default(true)  // Criar leads automaticamente
+
+  // Palavras-chave para transferir para humano
+  transferKeywords String[] @default(["atendente", "humano", "pessoa", "falar com alguém"])
+
+  // Horário de funcionamento (JSON: { "mon": { "start": "08:00", "end": "18:00" }, ... })
+  businessHours Json?
+
+  // Mensagens automáticas
+  welcomeMessage    String? @db.Text // Primeira mensagem
+  awayMessage       String? @db.Text // Fora do horário
+  transferMessage   String? @db.Text // Ao transferir para humano
+  closingMessage    String? @db.Text // Ao encerrar conversa
+
+  // Relacionamento
+  instanceId String           @unique
+  instance   WhatsAppInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ============================================

@@ -26,6 +26,7 @@ const PROTECTED_ROUTE_PREFIXES = [
     "/renovar",
     "/api-docs",
     "/guia-inicio",
+    "/whatsapp",
 ] as const
 
 /**

@@ -21,6 +21,7 @@ import {
     Clock,
     TrendingUp,
     Rocket,
+    MessageCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -37,6 +38,7 @@ interface TenantModules {
     webhooksEnabled: boolean
     multiUserEnabled: boolean
     customDomainsEnabled: boolean
+    whatsappEnabled: boolean
 }
 
 interface SubscriptionInfo {
@@ -59,6 +61,7 @@ export function Sidebar({ className }: SidebarProps) {
         webhooksEnabled: false,
         multiUserEnabled: true,
         customDomainsEnabled: false,
+        whatsappEnabled: false,
     })
     const [subscription, setSubscription] = useState<SubscriptionInfo>({
         hasSubscription: false,
@@ -130,6 +133,14 @@ export function Sidebar({ className }: SidebarProps) {
             color: "text-lime-400",
             dataTour: "nav-comercial",
         },
+        // WhatsApp - condicional
+        ...(modules.whatsappEnabled ? [{
+            label: "WhatsApp",
+            icon: MessageCircle,
+            href: "/whatsapp",
+            color: "text-emerald-400",
+            dataTour: "nav-whatsapp",
+        }] : []),
         {
             label: "Equipamentos",
             icon: Package,

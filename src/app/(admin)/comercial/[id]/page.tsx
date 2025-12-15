@@ -60,6 +60,7 @@ import {
   LeadForm,
   ActivityForm,
   ActivityTimeline,
+  LeadWhatsAppSection,
 } from "@/components/comercial"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
@@ -561,6 +562,13 @@ export default function LeadDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* WhatsApp */}
+          <LeadWhatsAppSection
+            leadId={leadId}
+            leadPhone={lead.phone}
+            leadWhatsapp={lead.whatsapp}
+          />
         </div>
       </div>
 

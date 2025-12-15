@@ -38,7 +38,7 @@ const activityTypes: { value: ActivityType; label: string; icon: any }[] = [
 ]
 
 const statusOptions = [
-  { value: "", label: "Manter atual" },
+  { value: "KEEP_CURRENT", label: "Manter atual" },
   { value: "NEW", label: "Novo" },
   { value: "CONTACTED", label: "Contatado" },
   { value: "QUALIFIED", label: "Qualificado" },
@@ -58,7 +58,7 @@ export function ActivityForm({ leadId, onSuccess, onCancel, className }: Activit
   const [loading, setLoading] = useState(false)
   const [type, setType] = useState<ActivityType>("CALL")
   const [description, setDescription] = useState("")
-  const [updateLeadStatus, setUpdateLeadStatus] = useState("")
+  const [updateLeadStatus, setUpdateLeadStatus] = useState("KEEP_CURRENT")
   const [nextAction, setNextAction] = useState("")
   const [nextActionDate, setNextActionDate] = useState("")
 
@@ -79,7 +79,7 @@ export function ActivityForm({ leadId, onSuccess, onCancel, className }: Activit
         body: JSON.stringify({
           type,
           description,
-          updateLeadStatus: updateLeadStatus || undefined,
+          updateLeadStatus: updateLeadStatus && updateLeadStatus !== "KEEP_CURRENT" ? updateLeadStatus : undefined,
           nextAction: nextAction || undefined,
           nextActionDate: nextActionDate || undefined,
         }),
@@ -91,7 +91,7 @@ export function ActivityForm({ leadId, onSuccess, onCancel, className }: Activit
         onSuccess?.(result.activity)
         // Reset form
         setDescription("")
-        setUpdateLeadStatus("")
+        setUpdateLeadStatus("KEEP_CURRENT")
         setNextAction("")
         setNextActionDate("")
       } else {
