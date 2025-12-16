@@ -55,7 +55,8 @@ export function ConnectionSetup({
   const handleRefreshQR = async () => {
     setRefreshing(true)
     try {
-      const response = await fetch("/api/whatsapp/instance/qr-code")
+      // Usar ?refresh=true para forçar geração de novo QR code
+      const response = await fetch("/api/whatsapp/instance/qr-code?refresh=true")
       const data = await response.json()
       if (data.qrCode) {
         setQrCode(data.qrCode)

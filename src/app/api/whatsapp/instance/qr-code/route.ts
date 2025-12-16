@@ -1,17 +1,21 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getUazapiClient, normalizeInstanceStatus } from "@/lib/whatsapp"
 import { WhatsAppInstanceStatus } from "@prisma/client"
 
-// GET - Obter QR Code atual
-export async function GET() {
+// GET - Obter status e QR Code atual (polling - NÃO gera novo QR)
+// Use ?refresh=true para forçar novo QR code
+export async function GET(request: NextRequest) {
   try {
     const session = await auth()
 
     if (!session?.user?.tenantId) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
+
+    const { searchParams } = new URL(request.url)
+    const forceRefresh = searchParams.get("refresh") === "true"
 
     const instance = await prisma.whatsAppInstance.findUnique({
       where: { tenantId: session.user.tenantId },
@@ -33,7 +37,7 @@ export async function GET() {
       })
     }
 
-    // Se não tem token, não consegue buscar QR
+    // Se não tem token, não consegue buscar status
     if (!instance.apiToken) {
       return NextResponse.json({
         status: instance.status,
@@ -43,35 +47,68 @@ export async function GET() {
       })
     }
 
-    // Chamar /instance/connect com o token da instância para obter QR atualizado
-    // Na Uazapi, este endpoint retorna o QR code atual ou gera um novo
     const uazapi = getUazapiClient()
 
-    try {
-      let result = await uazapi.connectInstance(instance.apiToken)
+    // Se NÃO é refresh, apenas verificar status sem gerar novo QR
+    if (!forceRefresh) {
+      try {
+        // Verificar status atual da conexão
+        const statusResult = await uazapi.getConnectionStatus(instance.instanceId)
+        console.log("[WhatsApp QR] Status check:", JSON.stringify(statusResult, null, 2))
 
-      console.log("[WhatsApp QR] Resposta connect (1):", JSON.stringify(result, null, 2))
+        const normalizedStatus = normalizeInstanceStatus(statusResult.status)
 
-      // Se não retornou QR code, aguardar um pouco e tentar novamente
-      // A Uazapi pode precisar de tempo para gerar o QR após iniciar a instância
-      if (!result.qrcode && result.status !== "CONNECTED") {
-        await new Promise(resolve => setTimeout(resolve, 2000)) // 2 segundos
-        result = await uazapi.connectInstance(instance.apiToken)
-        console.log("[WhatsApp QR] Resposta connect (2):", JSON.stringify(result, null, 2))
+        // Se conectou, atualizar banco
+        if (normalizedStatus === "CONNECTED") {
+          await prisma.whatsAppInstance.update({
+            where: { id: instance.id },
+            data: {
+              status: "CONNECTED",
+              phoneNumber: statusResult.phone || null,
+            },
+          })
+
+          return NextResponse.json({
+            status: "CONNECTED",
+            phoneNumber: statusResult.phone,
+            qrCode: null,
+          })
+        }
+
+        // Ainda não conectou - retornar QR do banco (sem gerar novo)
+        return NextResponse.json({
+          status: instance.status,
+          qrCode: instance.qrCode,
+          phoneNumber: instance.phoneNumber,
+        })
+      } catch (apiError) {
+        console.error("[WhatsApp QR] Erro ao verificar status:", apiError)
+        // Em caso de erro, retornar dados do banco
+        return NextResponse.json({
+          status: instance.status,
+          qrCode: instance.qrCode,
+          phoneNumber: instance.phoneNumber,
+        })
       }
+    }
+
+    // REFRESH = true: Gerar novo QR code
+    try {
+      console.log("[WhatsApp QR] Gerando novo QR code (refresh=true)")
+      const result = await uazapi.connectInstance(instance.apiToken)
+
+      console.log("[WhatsApp QR] Novo QR gerado:", result.qrcode ? "Sim" : "Não")
 
       // Normalizar status da Uazapi (lowercase) para nosso enum (uppercase)
       const normalizedStatus = normalizeInstanceStatus(result.status)
 
       // Atualizar no banco
-      const updateData: { qrCode?: string | null; status?: WhatsAppInstanceStatus } = {}
+      const updateData: { qrCode?: string | null; status?: WhatsAppInstanceStatus; phoneNumber?: string | null } = {}
 
       if (result.qrcode) {
         updateData.qrCode = result.qrcode
       }
 
-      // Só atualiza status se for CONNECTED (conectou!)
-      // Mantém CONNECTING enquanto aguarda o usuário escanear
       if (normalizedStatus === "CONNECTED") {
         updateData.status = "CONNECTED"
       }
@@ -83,7 +120,6 @@ export async function GET() {
         })
       }
 
-      // Retorna status atual do banco (CONNECTING) ou CONNECTED se conectou
       const returnStatus = normalizedStatus === "CONNECTED" ? "CONNECTED" : instance.status
 
       return NextResponse.json({
@@ -92,9 +128,8 @@ export async function GET() {
         phoneNumber: instance.phoneNumber,
       })
     } catch (apiError) {
-      console.error("[WhatsApp QR] Erro ao buscar QR:", apiError)
+      console.error("[WhatsApp QR] Erro ao gerar novo QR:", apiError)
 
-      // Retorna QR do banco se existir
       return NextResponse.json({
         status: instance.status,
         qrCode: instance.qrCode,
