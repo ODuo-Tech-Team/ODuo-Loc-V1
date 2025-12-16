@@ -277,12 +277,13 @@ export class UazapiClient {
   ): Promise<SendMessageResponse> {
     const phone = normalizePhone(data.phone)
 
-    return this.requestWithToken<SendMessageResponse>("/message/sendText", instanceToken, {
+    // Endpoint correto da Uazapi: /sendText (não /message/sendText)
+    return this.requestWithToken<SendMessageResponse>("/sendText", instanceToken, {
       method: "POST",
       body: JSON.stringify({
         number: phone,
         text: data.message,
-        ...(data.quotedMessageId && { quoted: { messageId: data.quotedMessageId } }),
+        ...(data.quotedMessageId && { replyid: data.quotedMessageId }),
       }),
     })
   }
@@ -297,14 +298,13 @@ export class UazapiClient {
   ): Promise<SendMessageResponse> {
     const phone = normalizePhone(data.phone)
 
-    return this.requestWithToken<SendMessageResponse>("/message/sendMedia", instanceToken, {
+    return this.requestWithToken<SendMessageResponse>("/sendImage", instanceToken, {
       method: "POST",
       body: JSON.stringify({
         number: phone,
-        mediatype: "image",
-        media: data.media,
+        image: data.media,
         caption: data.caption || "",
-        ...(data.quotedMessageId && { quoted: { messageId: data.quotedMessageId } }),
+        ...(data.quotedMessageId && { replyid: data.quotedMessageId }),
       }),
     })
   }
@@ -319,14 +319,13 @@ export class UazapiClient {
   ): Promise<SendMessageResponse> {
     const phone = normalizePhone(data.phone)
 
-    return this.requestWithToken<SendMessageResponse>("/message/sendMedia", instanceToken, {
+    return this.requestWithToken<SendMessageResponse>("/sendVideo", instanceToken, {
       method: "POST",
       body: JSON.stringify({
         number: phone,
-        mediatype: "video",
-        media: data.media,
+        video: data.media,
         caption: data.caption || "",
-        ...(data.quotedMessageId && { quoted: { messageId: data.quotedMessageId } }),
+        ...(data.quotedMessageId && { replyid: data.quotedMessageId }),
       }),
     })
   }
@@ -341,13 +340,12 @@ export class UazapiClient {
   ): Promise<SendMessageResponse> {
     const phone = normalizePhone(data.phone)
 
-    return this.requestWithToken<SendMessageResponse>("/message/sendMedia", instanceToken, {
+    return this.requestWithToken<SendMessageResponse>("/sendAudio", instanceToken, {
       method: "POST",
       body: JSON.stringify({
         number: phone,
-        mediatype: "audio",
-        media: data.media,
-        ...(data.quotedMessageId && { quoted: { messageId: data.quotedMessageId } }),
+        audio: data.media,
+        ...(data.quotedMessageId && { replyid: data.quotedMessageId }),
       }),
     })
   }
@@ -362,15 +360,14 @@ export class UazapiClient {
   ): Promise<SendMessageResponse> {
     const phone = normalizePhone(data.phone)
 
-    return this.requestWithToken<SendMessageResponse>("/message/sendMedia", instanceToken, {
+    return this.requestWithToken<SendMessageResponse>("/sendDocument", instanceToken, {
       method: "POST",
       body: JSON.stringify({
         number: phone,
-        mediatype: "document",
-        media: data.media,
-        fileName: data.fileName || "document",
+        document: data.media,
+        filename: data.fileName || "document",
         caption: data.caption || "",
-        ...(data.quotedMessageId && { quoted: { messageId: data.quotedMessageId } }),
+        ...(data.quotedMessageId && { replyid: data.quotedMessageId }),
       }),
     })
   }
@@ -385,12 +382,12 @@ export class UazapiClient {
   ): Promise<SendMessageResponse> {
     const phone = normalizePhone(data.phone)
 
-    return this.requestWithToken<SendMessageResponse>("/message/sendLocation", instanceToken, {
+    return this.requestWithToken<SendMessageResponse>("/sendLocation", instanceToken, {
       method: "POST",
       body: JSON.stringify({
         number: phone,
-        latitude: data.latitude,
-        longitude: data.longitude,
+        lat: data.latitude,
+        lng: data.longitude,
         name: data.name || "",
         address: data.address || "",
       }),
@@ -407,14 +404,12 @@ export class UazapiClient {
   ): Promise<SendMessageResponse> {
     const phone = normalizePhone(data.phone)
 
-    return this.requestWithToken<SendMessageResponse>("/message/sendContact", instanceToken, {
+    return this.requestWithToken<SendMessageResponse>("/sendContact", instanceToken, {
       method: "POST",
       body: JSON.stringify({
         number: phone,
-        contact: {
-          fullName: data.contactName,
-          phoneNumber: normalizePhone(data.contactPhone),
-        },
+        name: data.contactName,
+        phone: normalizePhone(data.contactPhone),
       }),
     })
   }

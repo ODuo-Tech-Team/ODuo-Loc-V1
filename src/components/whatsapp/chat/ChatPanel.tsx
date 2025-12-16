@@ -44,6 +44,12 @@ interface Message {
     name: string
   }
   isFromBot?: boolean
+  metadata?: {
+    isGroup?: boolean
+    groupName?: string
+    senderName?: string
+    senderPhone?: string
+  }
 }
 
 interface ChatPanelProps {
@@ -356,6 +362,16 @@ export function ChatPanel({
                         : "bg-zinc-800 text-zinc-100"
                     )}
                   >
+                    {/* Nome do remetente (para grupos) */}
+                    {!isOutbound && message.metadata?.senderName && (
+                      <div className="text-xs font-medium text-emerald-400 mb-1">
+                        {message.metadata.senderName}
+                        {message.metadata.groupName && (
+                          <span className="text-zinc-500 font-normal"> • {message.metadata.groupName}</span>
+                        )}
+                      </div>
+                    )}
+
                     {/* Conteúdo da mensagem */}
                     {message.type === "TEXT" ? (
                       <p className="whitespace-pre-wrap break-words">
