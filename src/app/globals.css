@@ -170,6 +170,72 @@
     background: rgba(49, 122, 224, 0.5);
   }
 
+  /* WhatsApp Chat Scrollbar - Dark Theme */
+  .whatsapp-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(63, 63, 70, 0.6) transparent;
+  }
+
+  .whatsapp-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .whatsapp-scroll::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 10px;
+  }
+
+  .whatsapp-scroll::-webkit-scrollbar-thumb {
+    background: rgba(63, 63, 70, 0.6);
+    border-radius: 10px;
+    transition: background 0.2s ease;
+  }
+
+  .whatsapp-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(82, 82, 91, 0.8);
+  }
+
+  .whatsapp-scroll::-webkit-scrollbar-thumb:active {
+    background: rgba(16, 185, 129, 0.6);
+  }
+
+  /* WhatsApp Conversation List Scrollbar */
+  .whatsapp-list-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(63, 63, 70, 0.4) transparent;
+  }
+
+  .whatsapp-list-scroll::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .whatsapp-list-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .whatsapp-list-scroll::-webkit-scrollbar-thumb {
+    background: rgba(63, 63, 70, 0.4);
+    border-radius: 10px;
+  }
+
+  .whatsapp-list-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(82, 82, 91, 0.6);
+  }
+
+  /* Audio Wave Animation */
+  @keyframes audio-wave {
+    0%, 100% {
+      transform: scaleY(0.5);
+    }
+    50% {
+      transform: scaleY(1);
+    }
+  }
+
+  .animate-audio-wave {
+    animation: audio-wave 0.8s ease-in-out infinite;
+  }
+
 }
 
 /* ===========================================

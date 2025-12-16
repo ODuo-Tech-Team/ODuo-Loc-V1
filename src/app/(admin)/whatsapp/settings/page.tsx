@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Bot, MessageSquare, Clock, Loader2, RefreshCw } from "lucide-react"
+import { ArrowLeft, Bot, MessageSquare, Clock, Loader2, RefreshCw, Users } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BotConfigForm } from "@/components/whatsapp/settings/BotConfigForm"
 import { FollowUpRules } from "@/components/whatsapp/settings/FollowUpRules"
+import { TeamManager } from "@/components/whatsapp/settings/TeamManager"
 import { toast } from "sonner"
 
 interface BotConfig {
@@ -108,7 +109,7 @@ export default function WhatsAppSettingsPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="bot" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="bot" className="flex items-center gap-2">
             <Bot className="h-4 w-4" />
             Bot de IA
@@ -120,6 +121,10 @@ export default function WhatsAppSettingsPage() {
           <TabsTrigger value="hours" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
             Horario
+          </TabsTrigger>
+          <TabsTrigger value="teams" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Times
           </TabsTrigger>
           <TabsTrigger value="followup" className="flex items-center gap-2">
             <RefreshCw className="h-4 w-4" />
@@ -155,6 +160,10 @@ export default function WhatsAppSettingsPage() {
               saving={saving}
             />
           )}
+        </TabsContent>
+
+        <TabsContent value="teams">
+          <TeamManager />
         </TabsContent>
 
         <TabsContent value="followup">

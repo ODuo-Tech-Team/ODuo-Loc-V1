@@ -21,6 +21,14 @@ export async function processIncomingMessage(
     contactName?: string
   }
 ): Promise<ProcessMessageResult> {
+  console.log("[AI Bot] Processing message:", {
+    tenantId,
+    conversationId,
+    messageType: message.type,
+    hasContent: !!message.content,
+    contentPreview: message.content?.substring(0, 50),
+  })
+
   // Buscar configuração do bot
   const instance = await prisma.whatsAppInstance.findUnique({
     where: { tenantId },
@@ -29,30 +37,57 @@ export async function processIncomingMessage(
     },
   })
 
-  if (!instance || !instance.botConfig || !instance.botConfig.enabled) {
+  if (!instance) {
+    console.log("[AI Bot] No instance found for tenant:", tenantId)
+    return { shouldRespond: false, action: "ignore" }
+  }
+
+  if (!instance.botConfig) {
+    console.log("[AI Bot] No bot config found for instance:", instance.id)
+    return { shouldRespond: false, action: "ignore" }
+  }
+
+  if (!instance.botConfig.enabled) {
+    console.log("[AI Bot] Bot is disabled in config")
     return { shouldRespond: false, action: "ignore" }
   }
 
   const botConfig = instance.botConfig
+  console.log("[AI Bot] Bot config found:", {
+    enabled: botConfig.enabled,
+    hasApiKey: !!botConfig.openaiApiKey,
+    apiKeyLength: botConfig.openaiApiKey?.length || 0,
+    model: botConfig.openaiModel,
+  })
 
   // Verificar se a conversa tem o bot ativo
   const conversation = await prisma.whatsAppConversation.findUnique({
     where: { id: conversationId },
   })
 
-  if (!conversation || !conversation.isBot) {
+  if (!conversation) {
+    console.log("[AI Bot] Conversation not found:", conversationId)
+    return { shouldRespond: false, action: "ignore" }
+  }
+
+  if (!conversation.isBot) {
+    console.log("[AI Bot] Bot is disabled for this conversation (isBot=false)")
     return { shouldRespond: false, action: "ignore" }
   }
 
   // Verificar se tem API key
   if (!botConfig.openaiApiKey) {
+    console.log("[AI Bot] No OpenAI API key configured")
     return { shouldRespond: false, action: "ignore" }
   }
 
   // Ignorar se não for mensagem de texto
-  if (message.type !== "text" || !message.content) {
+  if (message.type.toLowerCase() !== "text" || !message.content) {
+    console.log("[AI Bot] Ignoring non-text message:", message.type)
     return { shouldRespond: false, action: "ignore" }
   }
+
+  console.log("[AI Bot] All checks passed, will process message")
 
   // Verificar horário comercial
   if (botConfig.businessHours) {
@@ -91,6 +126,7 @@ export async function processIncomingMessage(
 
   // Gerar resposta com IA
   try {
+    console.log("[AI Bot] Generating AI response...")
     const response = await generateAIResponse(
       botConfig,
       tenantId,
@@ -99,6 +135,7 @@ export async function processIncomingMessage(
       message.contactName
     )
 
+    console.log("[AI Bot] AI response generated:", response.substring(0, 100))
     return {
       shouldRespond: true,
       response,
@@ -205,6 +242,13 @@ async function generateAIResponse(
   })
 
   // Chamar OpenAI
+  console.log("[AI Bot] Calling OpenAI:", {
+    model: botConfig.openaiModel || "gpt-4o-mini",
+    messagesCount: messages.length,
+    temperature: botConfig.temperature || 0.7,
+    maxTokens: botConfig.maxTokens || 500,
+  })
+
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -219,16 +263,25 @@ async function generateAIResponse(
     }),
   })
 
+  console.log("[AI Bot] OpenAI response status:", response.status)
+
   if (!response.ok) {
     const error = await response.text()
-    console.error("[AI Bot] OpenAI error:", error)
-    throw new Error("OpenAI API error")
+    console.error("[AI Bot] OpenAI error response:", error)
+    throw new Error(`OpenAI API error: ${response.status}`)
   }
 
   const data = await response.json()
+  console.log("[AI Bot] OpenAI response data:", {
+    hasChoices: !!data.choices,
+    choicesCount: data.choices?.length,
+    usage: data.usage,
+  })
+
   const aiResponse = data.choices[0]?.message?.content
 
   if (!aiResponse) {
+    console.error("[AI Bot] Empty response from OpenAI, data:", JSON.stringify(data))
     throw new Error("Empty response from OpenAI")
   }
 
@@ -243,6 +296,12 @@ export async function sendBotResponse(
   conversationId: string,
   response: string
 ): Promise<void> {
+  console.log("[AI Bot] Sending response:", {
+    conversationId,
+    responseLength: response.length,
+    responsePreview: response.substring(0, 100),
+  })
+
   // Buscar conversa com instância
   const conversation = await prisma.whatsAppConversation.findUnique({
     where: { id: conversationId },
@@ -251,18 +310,36 @@ export async function sendBotResponse(
     },
   })
 
-  if (!conversation || conversation.instance.status !== "CONNECTED") {
-    console.error("[AI Bot] Cannot send response: instance not connected")
+  if (!conversation) {
+    console.error("[AI Bot] Cannot send response: conversation not found")
     return
   }
 
+  if (conversation.instance.status !== "CONNECTED") {
+    console.error("[AI Bot] Cannot send response: instance not connected, status:", conversation.instance.status)
+    return
+  }
+
+  if (!conversation.instance.apiToken) {
+    console.error("[AI Bot] Cannot send response: no API token configured")
+    return
+  }
+
+  console.log("[AI Bot] Instance ready:", {
+    instanceId: conversation.instance.instanceId,
+    hasApiToken: !!conversation.instance.apiToken,
+    status: conversation.instance.status,
+  })
+
   const uazapi = getUazapiClient()
 
-  // Enviar mensagem
-  const result = await uazapi.sendTextMessage(conversation.instance.instanceId, {
+  // Enviar mensagem usando apiToken (NÃO instanceId!)
+  const result = await uazapi.sendTextMessage(conversation.instance.apiToken, {
     phone: conversation.contactPhone,
     message: response,
   })
+
+  console.log("[AI Bot] Send result:", result)
 
   if (result.success && result.messageId) {
     // Salvar mensagem no banco

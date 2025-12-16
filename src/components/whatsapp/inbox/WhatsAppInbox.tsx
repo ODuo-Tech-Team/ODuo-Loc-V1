@@ -76,13 +76,16 @@ export function WhatsAppInbox() {
     }
   }, [showArchived])
 
-  // Buscar agentes para atribuição
+  // Buscar todos os usuários do tenant para atribuição
   const fetchAgents = useCallback(async () => {
     try {
-      const response = await fetch("/api/users?role=ADMIN,MANAGER,OPERATOR")
+      // Buscar todos os usuários do tenant (não filtrar por role)
+      const response = await fetch("/api/users")
       if (response.ok) {
         const data = await response.json()
-        setAgents(data.users?.map((u: any) => ({ id: u.id, name: u.name })) || [])
+        // API retorna array diretamente, não { users: [] }
+        const users = Array.isArray(data) ? data : (data.users || [])
+        setAgents(users.filter((u: any) => u.active !== false).map((u: any) => ({ id: u.id, name: u.name })))
       }
     } catch (error) {
       console.error("Erro ao buscar agentes:", error)
@@ -169,6 +172,7 @@ export function WhatsAppInbox() {
           agents={agents}
           showArchived={showArchived}
           onToggleArchived={() => setShowArchived(!showArchived)}
+          currentUserId={session?.user?.id}
         />
       </div>
 

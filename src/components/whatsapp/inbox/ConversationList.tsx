@@ -4,10 +4,20 @@ import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   Search,
   RefreshCw,
   MessageCircle,
   Archive,
+  User,
+  Users,
+  Calendar,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Conversation } from "./WhatsAppInbox"
@@ -27,6 +37,7 @@ interface ConversationListProps {
   agents?: Agent[]
   showArchived?: boolean
   onToggleArchived?: () => void
+  currentUserId?: string
 }
 
 export function ConversationList({
@@ -38,15 +49,38 @@ export function ConversationList({
   agents = [],
   showArchived = false,
   onToggleArchived,
+  currentUserId,
 }: ConversationListProps) {
   const [search, setSearch] = useState("")
-  const [filter, setFilter] = useState<"all" | "open" | "pending" | "closed">("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | "open" | "pending" | "closed">("all")
+  const [assignFilter, setAssignFilter] = useState<"all" | "mine" | "unassigned">("all")
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "week" | "month">("all")
   const [tagFilter, setTagFilter] = useState<string | null>(null)
 
   // Coletar todas as tags únicas das conversas
   const allTags = Array.from(
     new Set(conversations.flatMap((c) => c.tags || []))
   ).sort()
+
+  // Helpers para filtro de data
+  const isToday = (date: string) => {
+    const d = new Date(date)
+    const today = new Date()
+    return d.toDateString() === today.toDateString()
+  }
+
+  const isThisWeek = (date: string) => {
+    const d = new Date(date)
+    const today = new Date()
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
+    return d >= weekAgo
+  }
+
+  const isThisMonth = (date: string) => {
+    const d = new Date(date)
+    const today = new Date()
+    return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()
+  }
 
   const filteredConversations = conversations.filter((conv) => {
     // Filtro de busca
@@ -63,10 +97,23 @@ export function ConversationList({
     }
 
     // Filtro de status
-    if (filter !== "all") {
-      if (filter === "open" && conv.status !== "OPEN") return false
-      if (filter === "pending" && conv.status !== "PENDING") return false
-      if (filter === "closed" && conv.status !== "CLOSED") return false
+    if (statusFilter !== "all") {
+      if (statusFilter === "open" && conv.status !== "OPEN") return false
+      if (statusFilter === "pending" && conv.status !== "PENDING") return false
+      if (statusFilter === "closed" && conv.status !== "CLOSED") return false
+    }
+
+    // Filtro de atribuição
+    if (assignFilter !== "all") {
+      if (assignFilter === "mine" && conv.assignedTo?.id !== currentUserId) return false
+      if (assignFilter === "unassigned" && conv.assignedTo) return false
+    }
+
+    // Filtro de data
+    if (dateFilter !== "all" && conv.lastMessageAt) {
+      if (dateFilter === "today" && !isToday(conv.lastMessageAt)) return false
+      if (dateFilter === "week" && !isThisWeek(conv.lastMessageAt)) return false
+      if (dateFilter === "month" && !isThisMonth(conv.lastMessageAt)) return false
     }
 
     // Filtro de tag
@@ -106,10 +153,10 @@ export function ConversationList({
           {(["all", "open", "pending", "closed"] as const).map((f) => (
             <Button
               key={f}
-              variant={filter === f ? "secondary" : "ghost"}
+              variant={statusFilter === f ? "secondary" : "ghost"}
               size="sm"
               className="h-7 text-xs"
-              onClick={() => setFilter(f)}
+              onClick={() => setStatusFilter(f)}
             >
               {f === "all" && "Todas"}
               {f === "open" && "Abertas"}
@@ -125,9 +172,37 @@ export function ConversationList({
               onClick={onToggleArchived}
             >
               <Archive className="h-3 w-3 mr-1" />
-              {showArchived ? "Ver ativas" : "Arquivadas"}
+              {showArchived ? "Ativas" : "Arquiv."}
             </Button>
           )}
+        </div>
+
+        {/* Filtros de atribuição e data */}
+        <div className="flex gap-2 mt-2">
+          <Select value={assignFilter} onValueChange={(v) => setAssignFilter(v as any)}>
+            <SelectTrigger className="h-7 text-xs bg-zinc-800 border-zinc-700 flex-1">
+              <User className="h-3 w-3 mr-1" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              <SelectItem value="mine">Minhas</SelectItem>
+              <SelectItem value="unassigned">Sem atribuição</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as any)}>
+            <SelectTrigger className="h-7 text-xs bg-zinc-800 border-zinc-700 flex-1">
+              <Calendar className="h-3 w-3 mr-1" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todo período</SelectItem>
+              <SelectItem value="today">Hoje</SelectItem>
+              <SelectItem value="week">Última semana</SelectItem>
+              <SelectItem value="month">Este mês</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Filtros de tags */}
@@ -164,7 +239,7 @@ export function ConversationList({
       </div>
 
       {/* Lista */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto whatsapp-list-scroll scroll-smooth">
         {filteredConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-zinc-500">
             <MessageCircle className="h-8 w-8 mb-2" />

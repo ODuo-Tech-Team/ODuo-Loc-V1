@@ -36,7 +36,7 @@ import { ptBR } from "date-fns/locale"
 import { toast } from "sonner"
 import { useWhatsAppSSE } from "@/hooks/useWhatsAppSSE"
 import { Conversation } from "../inbox/WhatsAppInbox"
-import { AudioRecorder, AudioRecordButton } from "./AudioRecorder"
+import { AudioRecorder, AudioRecordButton, AudioMessagePlayer } from "./AudioRecorder"
 import { FileUploader } from "./FileUploader"
 
 interface Message {
@@ -552,7 +552,7 @@ export function ChatPanel({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 whatsapp-scroll scroll-smooth">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
@@ -684,7 +684,10 @@ export function ChatPanel({
                         )}
                       </div>
                     ) : message.type === "AUDIO" ? (
-                      <audio src={message.mediaUrl} controls className="max-w-full" />
+                      <AudioMessagePlayer
+                        src={message.mediaUrl || ""}
+                        isOutbound={isOutbound}
+                      />
                     ) : message.type === "VIDEO" ? (
                       <video src={message.mediaUrl} controls className="max-w-full rounded" />
                     ) : message.type === "DOCUMENT" ? (
