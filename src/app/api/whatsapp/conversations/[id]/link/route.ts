@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { LeadStatus, LeadSource, ContactType } from "@prisma/client"
 
 // POST - Vincular conversa a Lead ou Customer
 export async function POST(
@@ -43,9 +44,9 @@ export async function POST(
             company: leadData.company || null,
             phone: conversation.contactPhone,
             whatsapp: conversation.contactPhone,
-            source: leadData.source || "SOCIAL_MEDIA",
-            contactType: leadData.contactType || "ONLINE",
-            status: leadData.status || "NEW",
+            source: (leadData.source || "SOCIAL_MEDIA") as LeadSource,
+            contactType: (leadData.contactType || "ONLINE") as ContactType,
+            status: (leadData.status || "NEW") as LeadStatus,
             expectedValue: leadData.expectedValue || null,
             interestNotes: leadData.interestNotes || "Negócio criado via WhatsApp",
           }
@@ -53,8 +54,8 @@ export async function POST(
             name: conversation.contactName || "Contato WhatsApp",
             phone: conversation.contactPhone,
             whatsapp: conversation.contactPhone,
-            source: "SOCIAL_MEDIA",
-            status: "NEW",
+            source: LeadSource.SOCIAL_MEDIA,
+            status: LeadStatus.NEW,
             interestNotes: "Lead criado via WhatsApp",
           }
 
