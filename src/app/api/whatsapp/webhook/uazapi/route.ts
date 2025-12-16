@@ -163,19 +163,38 @@ async function handleUazapiMessage(
 ) {
   // Extrair dados da mensagem do formato Uazapi
   const chat = payload.chat
-  const message = payload.message
+  const message = payload.message as any // Cast para acessar propriedades dinâmicas
+
+  console.log("[Webhook] handleUazapiMessage - chat:", chat ? "yes" : "no", "message:", message ? "yes" : "no")
 
   if (!chat && !message) {
     console.log("[Webhook] No chat or message in payload")
     return
   }
 
-  // Extrair telefone do chat
-  const phone = chat?.phone || chat?.jid?.replace("@s.whatsapp.net", "") || ""
+  // Extrair telefone - pode estar em vários lugares
+  // Formato chatid: "5511942902107@s.whatsapp.net" ou "5511942902107-1621833676@g.us" (grupo)
+  let phone = ""
+
+  // Tentar extrair do message.chatid primeiro
+  if (message?.chatid) {
+    phone = message.chatid.split("@")[0].split("-")[0] // Remove @s.whatsapp.net e IDs de grupo
+  }
+  // Fallback para chat.jid
+  if (!phone && chat?.jid) {
+    phone = chat.jid.split("@")[0].split("-")[0]
+  }
+  // Fallback para chat.phone
+  if (!phone && chat?.phone) {
+    phone = chat.phone
+  }
+
   if (!phone) {
-    console.log("[Webhook] Could not extract phone")
+    console.log("[Webhook] Could not extract phone from chatid:", message?.chatid, "jid:", chat?.jid)
     return
   }
+
+  console.log("[Webhook] Extracted phone:", phone)
 
   // Verificar se é mensagem enviada por nós (fromMe)
   const isFromMe = message?.fromMe === true
@@ -184,12 +203,24 @@ async function handleUazapiMessage(
     return
   }
 
-  // Extrair conteúdo da mensagem
-  const content = message?.content || message?.text || message?.body || ""
+  // Extrair conteúdo da mensagem - pode estar em message.content.text ou message.content
+  let content = ""
+  if (typeof message?.content === "object" && message.content?.text) {
+    content = message.content.text
+  } else if (typeof message?.content === "string") {
+    content = message.content
+  } else if (message?.text) {
+    content = message.text
+  } else if (message?.body) {
+    content = message.body
+  }
+
   const messageType = message?.type || "text"
   const messageId = message?.id || `msg_${Date.now()}`
   const contactName = chat?.name || phone
   const timestamp = message?.timestamp || message?.messageTimestamp || Math.floor(Date.now() / 1000)
+
+  console.log("[Webhook] Message content:", content?.substring(0, 100))
 
   console.log("[Webhook] Processing message from:", phone, "content:", content?.substring(0, 50))
 
