@@ -17,7 +17,9 @@
       "Bash(git commit -m \"$(cat <<''EOF''\nfeat: adicionar fallback ReceitaWS para consulta de CNPJ\n\n- BrasilAPI como primária, ReceitaWS como fallback\n- Logs detalhados para debug de erros\n- User-Agent atualizado para evitar bloqueios\n- Tratamento de código ALL_APIS_FAILED\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(npx dotenv:*)",
       "Bash(npx prisma db push:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfix: melhorar parsing de QR code da Uazapi\n\n- Adiciona log completo da resposta raw para debug\n- Busca qrcode em múltiplos caminhos possíveis (qrcode, qr, base64, instance.qrcode, data.qrcode)\n- Busca status em múltiplos caminhos (status, state, instance.status, data.status)\n- Corrige comparação de status para uppercase (CONNECTED)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []
