@@ -1745,7 +1745,7 @@ model WhatsAppBotConfig {
   // Comportamento
   includeEquipmentCatalog Boolean @default(true)  // Incluir catálogo nas respostas
   includeRentalPrices     Boolean @default(false) // Incluir preços
-  autoCreateLeads         Boolean @default(true)  // Criar leads automaticamente
+  autoCreateLeads         Boolean @default(false) // Criar leads automaticamente (desativado por padrão)
 
   // Palavras-chave para transferir para humano
   transferKeywords String[] @default(["atendente", "humano", "pessoa", "falar com alguém"])

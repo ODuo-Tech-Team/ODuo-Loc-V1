@@ -16,7 +16,7 @@ export async function POST(
 
     const { id } = await params
     const body = await request.json()
-    const { leadId, customerId, createLead } = body
+    const { leadId, customerId, createLead, leadData } = body
 
     // Verificar se conversa pertence ao tenant
     const conversation = await prisma.whatsAppConversation.findFirst({
@@ -33,17 +33,35 @@ export async function POST(
       )
     }
 
-    // Se for para criar um novo lead
+    // Se for para criar um novo lead/negócio
     if (createLead) {
+      // Se leadData foi fornecido, usar os campos customizados
+      // Senão, usar os valores padrão (comportamento anterior)
+      const leadFields = leadData
+        ? {
+            name: leadData.name || conversation.contactName || "Contato WhatsApp",
+            company: leadData.company || null,
+            phone: conversation.contactPhone,
+            whatsapp: conversation.contactPhone,
+            source: leadData.source || "SOCIAL_MEDIA",
+            contactType: leadData.contactType || "ONLINE",
+            status: leadData.status || "NEW",
+            expectedValue: leadData.expectedValue || null,
+            interestNotes: leadData.interestNotes || "Negócio criado via WhatsApp",
+          }
+        : {
+            name: conversation.contactName || "Contato WhatsApp",
+            phone: conversation.contactPhone,
+            whatsapp: conversation.contactPhone,
+            source: "SOCIAL_MEDIA",
+            status: "NEW",
+            interestNotes: "Lead criado via WhatsApp",
+          }
+
       const newLead = await prisma.lead.create({
         data: {
           tenantId: session.user.tenantId,
-          name: conversation.contactName || "Contato WhatsApp",
-          phone: conversation.contactPhone,
-          whatsapp: conversation.contactPhone,
-          source: "SOCIAL_MEDIA",
-          status: "NEW",
-          interestNotes: "Lead criado automaticamente via WhatsApp",
+          ...leadFields,
         },
       })
 

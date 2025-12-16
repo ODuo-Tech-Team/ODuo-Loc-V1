@@ -2,6 +2,9 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -12,6 +15,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   X,
   User,
   Building,
@@ -20,6 +30,9 @@ import {
   Plus,
   ExternalLink,
   Bot,
+  Loader2,
+  TrendingUp,
+  DollarSign,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Conversation } from "./WhatsAppInbox"
@@ -31,6 +44,14 @@ interface ContactDetailsProps {
   onUpdate: () => void
 }
 
+// Status do Kanban com labels em português
+const kanbanStatuses = [
+  { value: "NEW", label: "Novo", color: "bg-blue-500" },
+  { value: "CONTACTED", label: "Contactado", color: "bg-yellow-500" },
+  { value: "QUALIFIED", label: "Qualificado", color: "bg-purple-500" },
+  { value: "PROPOSAL", label: "Proposta", color: "bg-orange-500" },
+]
+
 export function ContactDetails({
   conversation,
   onClose,
@@ -38,6 +59,15 @@ export function ContactDetails({
 }: ContactDetailsProps) {
   const [linking, setLinking] = useState(false)
   const [tags, setTags] = useState<string[]>(conversation.tags || [])
+
+  // Estado do dialog de criar negócio
+  const [showCreateDealDialog, setShowCreateDealDialog] = useState(false)
+  const [dealName, setDealName] = useState("")
+  const [dealCompany, setDealCompany] = useState("")
+  const [dealStatus, setDealStatus] = useState("NEW")
+  const [dealValue, setDealValue] = useState("")
+  const [dealNotes, setDealNotes] = useState("")
+  const [creatingDeal, setCreatingDeal] = useState(false)
 
   const getInitials = (name?: string, phone?: string) => {
     if (name) {
@@ -58,30 +88,62 @@ export function ContactDetails({
     return phone
   }
 
-  // Criar lead a partir da conversa
-  const handleCreateLead = async () => {
+  // Abrir dialog de criar negócio com dados pré-preenchidos
+  const openCreateDealDialog = () => {
+    setDealName(conversation.contactName || "")
+    setDealCompany("")
+    setDealStatus("NEW")
+    setDealValue("")
+    setDealNotes("")
+    setShowCreateDealDialog(true)
+  }
+
+  // Criar negócio no Kanban a partir da conversa
+  const handleCreateDeal = async () => {
+    if (!dealName.trim()) {
+      toast.error("Nome e obrigatorio")
+      return
+    }
+
     try {
-      setLinking(true)
+      setCreatingDeal(true)
       const response = await fetch(
         `/api/whatsapp/conversations/${conversation.id}/link`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ createLead: true }),
+          body: JSON.stringify({
+            createLead: true,
+            leadData: {
+              name: dealName,
+              company: dealCompany || null,
+              status: dealStatus,
+              expectedValue: dealValue ? parseFloat(dealValue) : null,
+              interestNotes: dealNotes || null,
+              source: "SOCIAL_MEDIA",
+              contactType: "ONLINE",
+            },
+          }),
         }
       )
 
       if (response.ok) {
-        toast.success("Lead criado com sucesso!")
+        const data = await response.json()
+        toast.success("Negocio criado com sucesso!")
+        setShowCreateDealDialog(false)
         onUpdate()
+        // Abrir a página do lead no comercial
+        if (data.lead?.id) {
+          window.open(`/comercial/${data.lead.id}`, "_blank")
+        }
       } else {
         const error = await response.json()
-        toast.error(error.error || "Erro ao criar lead")
+        toast.error(error.error || "Erro ao criar negocio")
       }
     } catch (error) {
-      toast.error("Erro ao criar lead")
+      toast.error("Erro ao criar negocio")
     } finally {
-      setLinking(false)
+      setCreatingDeal(false)
     }
   }
 
@@ -288,17 +350,15 @@ export function ContactDetails({
           ) : (
             <div className="p-3 bg-zinc-800/50 rounded-lg border border-dashed border-zinc-700">
               <p className="text-sm text-zinc-400 mb-3">
-                Nenhum vínculo. Crie um lead ou vincule a um existente.
+                Nenhum vinculo. Crie um negocio no Kanban para acompanhar.
               </p>
               <Button
                 size="sm"
-                variant="outline"
-                className="w-full"
-                onClick={handleCreateLead}
-                disabled={linking}
+                className="w-full bg-emerald-600 hover:bg-emerald-700"
+                onClick={openCreateDealDialog}
               >
-                <Plus className="h-3 w-3 mr-2" />
-                Criar Lead
+                <TrendingUp className="h-3 w-3 mr-2" />
+                Criar Negocio
               </Button>
             </div>
           )}
@@ -348,6 +408,131 @@ export function ContactDetails({
           </div>
         </div>
       </div>
+
+      {/* Dialog de Criar Negócio */}
+      <Dialog open={showCreateDealDialog} onOpenChange={setShowCreateDealDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-emerald-500" />
+              Criar Negocio
+            </DialogTitle>
+            <DialogDescription>
+              Crie um negocio no Kanban para acompanhar este contato
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Nome */}
+            <div className="space-y-2">
+              <Label>Nome *</Label>
+              <Input
+                value={dealName}
+                onChange={(e) => setDealName(e.target.value)}
+                placeholder="Nome do contato ou negocio"
+                className="bg-zinc-800 border-zinc-700"
+              />
+            </div>
+
+            {/* Empresa */}
+            <div className="space-y-2">
+              <Label>Empresa</Label>
+              <Input
+                value={dealCompany}
+                onChange={(e) => setDealCompany(e.target.value)}
+                placeholder="Nome da empresa (opcional)"
+                className="bg-zinc-800 border-zinc-700"
+              />
+            </div>
+
+            {/* Telefone (somente leitura) */}
+            <div className="space-y-2">
+              <Label>Telefone</Label>
+              <Input
+                value={formatPhone(conversation.contactPhone)}
+                disabled
+                className="bg-zinc-900 border-zinc-800 text-zinc-400"
+              />
+            </div>
+
+            {/* Etapa do Kanban */}
+            <div className="space-y-2">
+              <Label>Etapa Inicial</Label>
+              <Select value={dealStatus} onValueChange={setDealStatus}>
+                <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {kanbanStatuses.map((status) => (
+                    <SelectItem key={status.value} value={status.value}>
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${status.color}`} />
+                        {status.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Valor Esperado */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-zinc-500" />
+                Valor Esperado
+              </Label>
+              <Input
+                type="number"
+                value={dealValue}
+                onChange={(e) => setDealValue(e.target.value)}
+                placeholder="0.00"
+                className="bg-zinc-800 border-zinc-700"
+              />
+            </div>
+
+            {/* Notas */}
+            <div className="space-y-2">
+              <Label>Observacoes</Label>
+              <Textarea
+                value={dealNotes}
+                onChange={(e) => setDealNotes(e.target.value)}
+                placeholder="Interesse, equipamentos, contexto da conversa..."
+                className="bg-zinc-800 border-zinc-700 resize-none"
+                rows={3}
+              />
+            </div>
+          </div>
+
+          {/* Botões */}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setShowCreateDealDialog(false)}
+              disabled={creatingDeal}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+              onClick={handleCreateDeal}
+              disabled={creatingDeal || !dealName.trim()}
+            >
+              {creatingDeal ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Criando...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Negocio
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
