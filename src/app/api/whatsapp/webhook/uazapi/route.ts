@@ -1,20 +1,40 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import {
-  WebhookPayload,
-  identifyWebhookEvent,
-  ParsedMessage,
-  MESSAGE_STATUS_MAP,
-} from "@/lib/whatsapp"
-import {
   publishNewMessage,
   publishMessageStatus,
-  publishConversationUpdate,
   publishConnectionStatus,
 } from "@/lib/whatsapp/sse-publisher"
 import { handleBotMessage } from "@/lib/whatsapp/ai-bot-service"
 
 const WEBHOOK_SECRET = process.env.UAZAPI_WEBHOOK_SECRET || ""
+
+// Interface para o formato real da Uazapi
+interface UazapiWebhookPayload {
+  BaseUrl?: string
+  EventType?: string
+  event?: string
+  instance?: string
+  chat?: {
+    id?: string
+    image?: string
+    jid?: string
+    name?: string
+    phone?: string
+  }
+  message?: {
+    id?: string
+    fromMe?: boolean
+    type?: string
+    content?: string
+    text?: string
+    body?: string
+    timestamp?: number
+    messageTimestamp?: number
+  }
+  data?: any
+  [key: string]: any
+}
 
 // POST - Receber webhook da Uazapi
 export async function POST(request: NextRequest) {
@@ -22,9 +42,9 @@ export async function POST(request: NextRequest) {
     // Log raw body para debug
     const rawBody = await request.text()
     console.log("[Webhook] ========== NOVO EVENTO ==========")
-    console.log("[Webhook] Raw body:", rawBody.substring(0, 500))
+    console.log("[Webhook] Raw body:", rawBody.substring(0, 1000))
 
-    let payload: WebhookPayload
+    let payload: UazapiWebhookPayload
     try {
       payload = JSON.parse(rawBody)
     } catch {
@@ -41,41 +61,91 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log("[Webhook] Event:", payload.event)
-    console.log("[Webhook] Instance:", payload.instance)
-    console.log("[Webhook] Data keys:", payload.data ? Object.keys(payload.data) : "null")
+    // Detectar formato: Uazapi usa EventType, outros usam event
+    const eventType = (payload.EventType || payload.event || "").toLowerCase()
+    console.log("[Webhook] EventType:", eventType)
+    console.log("[Webhook] BaseUrl:", payload.BaseUrl)
+    console.log("[Webhook] Chat:", payload.chat ? JSON.stringify(payload.chat).substring(0, 200) : "null")
+    console.log("[Webhook] Message:", payload.message ? JSON.stringify(payload.message).substring(0, 200) : "null")
 
-    // Buscar instância pelo instanceId
-    const instance = await prisma.whatsAppInstance.findFirst({
-      where: { instanceId: payload.instance },
-    })
-
-    if (!instance) {
-      console.warn("[Webhook] Instance not found:", payload.instance)
-      return NextResponse.json({ success: true }) // Retorna OK para não bloquear
+    // Extrair instanceId do BaseUrl (formato: https://oduocombr.uazapi.com)
+    // Ou usar o campo instance se existir
+    let instanceId = payload.instance
+    if (!instanceId && payload.BaseUrl) {
+      // Buscar instância pela URL base
+      const instance = await prisma.whatsAppInstance.findFirst({
+        where: {
+          OR: [
+            { instanceId: { contains: "oduocombr" } },
+            { instanceName: { contains: "oduo" } },
+          ]
+        }
+      })
+      if (instance) {
+        instanceId = instance.instanceId
+      }
     }
 
-    const { type, data } = identifyWebhookEvent(payload)
+    // Se ainda não encontrou, tentar buscar pelo chat.id
+    if (!instanceId && payload.chat?.id) {
+      // O chat.id pode conter referência à instância
+      const chatIdParts = payload.chat.id.split("_")
+      if (chatIdParts.length > 0) {
+        const possibleInstanceId = chatIdParts[0]
+        const instance = await prisma.whatsAppInstance.findFirst({
+          where: { instanceId: { startsWith: possibleInstanceId.substring(0, 8) } }
+        })
+        if (instance) {
+          instanceId = instance.instanceId
+        }
+      }
+    }
 
-    switch (type) {
+    // Buscar qualquer instância ativa se não encontrou específica
+    let instance = instanceId
+      ? await prisma.whatsAppInstance.findFirst({ where: { instanceId } })
+      : await prisma.whatsAppInstance.findFirst({ where: { status: "CONNECTED" } })
+
+    if (!instance) {
+      console.warn("[Webhook] No instance found, trying first available")
+      instance = await prisma.whatsAppInstance.findFirst()
+    }
+
+    if (!instance) {
+      console.warn("[Webhook] No instance found at all")
+      return NextResponse.json({ success: true })
+    }
+
+    console.log("[Webhook] Using instance:", instance.id, instance.instanceName)
+
+    // Processar baseado no tipo de evento
+    switch (eventType) {
+      case "messages":
       case "message":
-        await handleIncomingMessage(instance.id, instance.tenantId, data as ParsedMessage | null)
+      case "messages.upsert":
+        await handleUazapiMessage(instance.id, instance.tenantId, payload)
         break
 
-      case "status":
-        await handleMessageStatus(instance.tenantId, data as Array<{ messageId: string; phone: string; status: string }>)
+      case "messages_update":
+      case "messages.update":
+      case "message_status":
+        await handleUazapiMessageStatus(instance.tenantId, payload)
         break
 
       case "connection":
-        await handleConnectionUpdate(instance.id, instance.tenantId, data as { state: string; reason?: number })
+      case "connection.update":
+      case "status":
+        await handleUazapiConnectionUpdate(instance.id, instance.tenantId, payload)
         break
 
       case "qr":
-        await handleQRUpdate(instance.id, data as { qrCode: string })
+      case "qr.update":
+      case "qrcode":
+        await handleUazapiQRUpdate(instance.id, payload)
         break
 
       default:
-        console.log("[Webhook] Unknown event type:", type)
+        console.log("[Webhook] Evento ignorado:", eventType)
     }
 
     return NextResponse.json({ success: true })
@@ -85,60 +155,77 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Handler: Nova mensagem recebida
-async function handleIncomingMessage(
+// Handler para mensagens no formato Uazapi
+async function handleUazapiMessage(
   instanceId: string,
   tenantId: string,
-  message: ParsedMessage | null
+  payload: UazapiWebhookPayload
 ) {
-  if (!message) return
+  // Extrair dados da mensagem do formato Uazapi
+  const chat = payload.chat
+  const message = payload.message
 
-  // Ignorar mensagens enviadas por nós
-  if (message.isFromMe) {
-    // Apenas atualizar status da mensagem existente
-    await prisma.whatsAppMessage.updateMany({
-      where: { externalId: message.id },
-      data: { status: "SENT", sentAt: new Date() },
-    })
+  if (!chat && !message) {
+    console.log("[Webhook] No chat or message in payload")
     return
   }
 
-  console.log("[Webhook] New message from:", message.phone, "Type:", message.type)
+  // Extrair telefone do chat
+  const phone = chat?.phone || chat?.jid?.replace("@s.whatsapp.net", "") || ""
+  if (!phone) {
+    console.log("[Webhook] Could not extract phone")
+    return
+  }
+
+  // Verificar se é mensagem enviada por nós (fromMe)
+  const isFromMe = message?.fromMe === true
+  if (isFromMe) {
+    console.log("[Webhook] Ignoring own message")
+    return
+  }
+
+  // Extrair conteúdo da mensagem
+  const content = message?.content || message?.text || message?.body || ""
+  const messageType = message?.type || "text"
+  const messageId = message?.id || `msg_${Date.now()}`
+  const contactName = chat?.name || phone
+  const timestamp = message?.timestamp || message?.messageTimestamp || Math.floor(Date.now() / 1000)
+
+  console.log("[Webhook] Processing message from:", phone, "content:", content?.substring(0, 50))
 
   // Buscar ou criar conversa
   let conversation = await prisma.whatsAppConversation.findFirst({
     where: {
       instanceId,
-      contactPhone: message.phone,
+      contactPhone: phone,
     },
   })
 
   if (!conversation) {
-    // Criar nova conversa
     conversation = await prisma.whatsAppConversation.create({
       data: {
         instanceId,
         tenantId,
-        contactPhone: message.phone,
-        contactName: message.contactName,
+        contactPhone: phone,
+        contactName,
         status: "OPEN",
         isBot: true,
-        lastMessage: message.content?.substring(0, 100) || `[${message.type}]`,
-        lastMessageAt: message.timestamp,
+        lastMessage: content?.substring(0, 100) || `[${messageType}]`,
+        lastMessageAt: new Date(timestamp * 1000),
         unreadCount: 1,
       },
     })
+    console.log("[Webhook] Created new conversation:", conversation.id)
 
-    // Tentar vincular automaticamente com Lead ou Customer
-    await autoLinkContact(conversation.id, tenantId, message.phone)
+    // Auto-link com Lead/Customer
+    await autoLinkContact(conversation.id, tenantId, phone)
   } else {
-    // Atualizar conversa existente
     await prisma.whatsAppConversation.update({
       where: { id: conversation.id },
       data: {
-        contactName: message.contactName || conversation.contactName,
-        lastMessage: message.content?.substring(0, 100) || `[${message.type}]`,
-        lastMessageAt: message.timestamp,
+        contactName: contactName || conversation.contactName,
+        lastMessage: content?.substring(0, 100) || `[${messageType}]`,
+        lastMessageAt: new Date(timestamp * 1000),
         unreadCount: { increment: 1 },
         status: conversation.status === "CLOSED" ? "OPEN" : conversation.status,
       },
@@ -148,113 +235,106 @@ async function handleIncomingMessage(
   // Salvar mensagem
   const savedMessage = await prisma.whatsAppMessage.create({
     data: {
-      externalId: message.id,
+      externalId: messageId,
       conversationId: conversation.id,
       direction: "INBOUND",
-      type: message.type.toUpperCase() as any,
-      content: message.content,
-      mediaUrl: message.mediaUrl,
-      mediaType: message.mediaType,
-      mediaFileName: message.mediaFileName,
-      mediaDuration: message.mediaDuration,
-      quotedMessageId: message.quotedMessageId,
+      type: messageType.toUpperCase() as any,
+      content,
       status: "DELIVERED",
-      metadata: message.latitude
-        ? {
-            latitude: message.latitude,
-            longitude: message.longitude,
-            locationName: message.locationName,
-            locationAddress: message.locationAddress,
-          }
-        : message.contactName2
-        ? {
-            contactName: message.contactName2,
-            contactPhone: message.contactPhone,
-          }
-        : undefined,
     },
   })
 
-  // Publicar evento SSE para real-time updates
+  console.log("[Webhook] Saved message:", savedMessage.id)
+
+  // Publicar evento SSE
   await publishNewMessage(tenantId, conversation.id, {
     id: savedMessage.id,
     direction: "INBOUND",
-    type: message.type,
-    content: message.content,
-    contactPhone: message.phone,
-    contactName: message.contactName,
+    type: messageType,
+    content,
+    contactPhone: phone,
+    contactName,
   })
 
-  // Processar com bot de IA (em background, não bloqueia o webhook)
+  // Processar com bot de IA
   handleBotMessage(tenantId, conversation.id, {
-    content: message.content,
-    type: message.type,
-    contactPhone: message.phone,
-    contactName: message.contactName,
+    content,
+    type: messageType,
+    contactPhone: phone,
+    contactName,
   }).catch((error) => {
     console.error("[Webhook] Bot error:", error)
   })
 }
 
-// Handler: Atualização de status de mensagem
-async function handleMessageStatus(
+// Handler para status de mensagem
+async function handleUazapiMessageStatus(
   tenantId: string,
-  updates: Array<{ messageId: string; phone: string; status: string }>
+  payload: UazapiWebhookPayload
 ) {
-  for (const update of updates) {
-    const statusMap: Record<string, any> = {
-      PENDING: { status: "PENDING" },
-      SENT: { status: "SENT", sentAt: new Date() },
-      DELIVERED: { status: "DELIVERED", deliveredAt: new Date() },
-      READ: { status: "READ", readAt: new Date() },
-      FAILED: { status: "FAILED", failedAt: new Date() },
-    }
+  const messageId = payload.message?.id
+  const status = payload.message?.type || "delivered"
 
-    const data = statusMap[update.status]
-    if (!data) continue
+  if (!messageId) return
 
-    await prisma.whatsAppMessage.updateMany({
-      where: { externalId: update.messageId },
-      data,
-    })
-
-    // Publicar evento SSE
-    await publishMessageStatus(tenantId, update.messageId, update.status)
+  const statusMap: Record<string, any> = {
+    pending: { status: "PENDING" },
+    sent: { status: "SENT", sentAt: new Date() },
+    delivered: { status: "DELIVERED", deliveredAt: new Date() },
+    read: { status: "READ", readAt: new Date() },
+    failed: { status: "FAILED", failedAt: new Date() },
   }
+
+  const data = statusMap[status.toLowerCase()]
+  if (!data) return
+
+  await prisma.whatsAppMessage.updateMany({
+    where: { externalId: messageId },
+    data,
+  })
+
+  await publishMessageStatus(tenantId, messageId, status.toUpperCase())
 }
 
-// Handler: Atualização de conexão
-async function handleConnectionUpdate(
+// Handler para conexão
+async function handleUazapiConnectionUpdate(
   instanceId: string,
   tenantId: string,
-  data: { state: string; reason?: number }
+  payload: UazapiWebhookPayload
 ) {
+  const state = payload.data?.state || payload.message?.type || "disconnected"
+
   const statusMap: Record<string, any> = {
-    CONNECTED: "CONNECTED",
-    DISCONNECTED: "DISCONNECTED",
-    CONNECTING: "CONNECTING",
+    open: "CONNECTED",
+    connected: "CONNECTED",
+    close: "DISCONNECTED",
+    disconnected: "DISCONNECTED",
+    connecting: "CONNECTING",
   }
 
-  const newStatus = statusMap[data.state] || "DISCONNECTED"
+  const newStatus = statusMap[state.toLowerCase()] || "DISCONNECTED"
 
   const updated = await prisma.whatsAppInstance.update({
     where: { id: instanceId },
     data: {
       status: newStatus,
-      qrCode: data.state === "CONNECTED" ? null : undefined, // Limpa QR ao conectar
+      qrCode: state === "open" || state === "connected" ? null : undefined,
     },
   })
 
-  // Publicar evento SSE
   await publishConnectionStatus(tenantId, newStatus, updated.phoneNumber || undefined)
 }
 
-// Handler: Atualização de QR Code
-async function handleQRUpdate(instanceId: string, data: { qrCode: string }) {
+// Handler para QR Code
+async function handleUazapiQRUpdate(instanceId: string, payload: UazapiWebhookPayload) {
+  const qrCode = payload.data?.qr || payload.message?.content || ""
+
+  if (!qrCode) return
+
   await prisma.whatsAppInstance.update({
     where: { id: instanceId },
     data: {
-      qrCode: data.qrCode,
+      qrCode,
       status: "CONNECTING",
     },
   })

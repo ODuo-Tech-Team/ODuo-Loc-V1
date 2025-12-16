@@ -11,17 +11,38 @@ import {
 
 /**
  * Parseia o payload de uma mensagem recebida
+ * Suporta múltiplos formatos da Uazapi
  */
 export function parseIncomingMessage(
   webhook: IncomingMessageWebhook
 ): ParsedMessage | null {
-  const { data } = webhook
-  const { key, message, pushName, messageTimestamp } = data
+  // Tentar extrair data de múltiplos formatos
+  let data = webhook.data
 
-  if (!message) return null
+  // Se data é array (formato messages), pegar primeiro item
+  if (Array.isArray(data)) {
+    data = data[0]
+    if (!data) return null
+  }
+
+  // Verificar se tem estrutura esperada
+  const { key, message, pushName, messageTimestamp } = data || {}
+
+  // Log para debug
+  console.log("[Parser] Parsing message - key:", key ? "yes" : "no", "message:", message ? "yes" : "no")
+
+  if (!key || !message) {
+    console.log("[Parser] Missing key or message, raw data:", JSON.stringify(data).substring(0, 300))
+    return null
+  }
 
   // Extrai o número de telefone do JID
-  const phone = key.remoteJid.replace("@s.whatsapp.net", "").replace("@g.us", "")
+  const phone = key.remoteJid?.replace("@s.whatsapp.net", "").replace("@g.us", "") || ""
+
+  if (!phone) {
+    console.log("[Parser] Could not extract phone from remoteJid:", key.remoteJid)
+    return null
+  }
 
   // Determina o tipo e conteúdo da mensagem
   let type: MessageType = "text"
@@ -155,6 +176,7 @@ export function parseQRUpdate(webhook: QRUpdateWebhook): { qrCode: string } {
 
 /**
  * Identifica o tipo de evento do webhook
+ * Suporta múltiplos formatos de eventos da Uazapi
  */
 export function identifyWebhookEvent(
   payload: WebhookPayload
@@ -162,22 +184,34 @@ export function identifyWebhookEvent(
   type: "message" | "status" | "connection" | "qr" | "unknown"
   data: unknown
 } {
-  switch (payload.event) {
-    case "messages.upsert":
-      return { type: "message", data: parseIncomingMessage(payload as IncomingMessageWebhook) }
+  const event = payload.event?.toLowerCase() || ""
 
-    case "messages.update":
-      return { type: "status", data: parseMessageStatus(payload as MessageStatusWebhook) }
-
-    case "connection.update":
-      return { type: "connection", data: parseConnectionUpdate(payload as ConnectionUpdateWebhook) }
-
-    case "qr.update":
-      return { type: "qr", data: parseQRUpdate(payload as QRUpdateWebhook) }
-
-    default:
-      return { type: "unknown", data: payload.data }
+  // Mensagens recebidas - múltiplos formatos possíveis
+  if (event === "messages.upsert" || event === "messages" || event === "message") {
+    return { type: "message", data: parseIncomingMessage(payload as IncomingMessageWebhook) }
   }
+
+  // Atualização de status de mensagem
+  if (event === "messages.update" || event === "messages_update" || event === "message_status") {
+    return { type: "status", data: parseMessageStatus(payload as MessageStatusWebhook) }
+  }
+
+  // Atualização de conexão
+  if (event === "connection.update" || event === "connection" || event === "status") {
+    return { type: "connection", data: parseConnectionUpdate(payload as ConnectionUpdateWebhook) }
+  }
+
+  // QR Code
+  if (event === "qr.update" || event === "qr" || event === "qrcode") {
+    return { type: "qr", data: parseQRUpdate(payload as QRUpdateWebhook) }
+  }
+
+  // Eventos ignorados (não precisamos processar)
+  if (["history", "contacts", "chats", "chat_labels", "groups"].includes(event)) {
+    return { type: "unknown", data: null }
+  }
+
+  return { type: "unknown", data: payload.data }
 }
 
 /**
