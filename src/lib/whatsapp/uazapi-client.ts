@@ -128,10 +128,40 @@ export class UazapiClient {
    * Docs: POST /instance/connect - sem phone = QR Code
    */
   async connectInstance(instanceToken: string): Promise<QRCodeResponse> {
-    return this.requestWithToken<QRCodeResponse>("/instance/connect", instanceToken, {
+    const response = await this.requestWithToken<Record<string, unknown>>("/instance/connect", instanceToken, {
       method: "POST",
       body: JSON.stringify({}), // Body vazio para gerar QR Code
     })
+
+    // Log completo da resposta para debug
+    console.log("[Uazapi] Connect raw response:", JSON.stringify(response, null, 2))
+
+    // A resposta pode ter qrcode em vários lugares dependendo da versão da API
+    // Tentar múltiplos caminhos possíveis
+    const qrcode = (response.qrcode as string) ||
+                   (response.qr as string) ||
+                   (response.base64 as string) ||
+                   (response.instance as Record<string, unknown>)?.qrcode as string ||
+                   (response.instance as Record<string, unknown>)?.qr as string ||
+                   (response.data as Record<string, unknown>)?.qrcode as string ||
+                   (response.data as Record<string, unknown>)?.qr as string ||
+                   ""
+
+    const status = (response.status as string) ||
+                   (response.state as string) ||
+                   (response.instance as Record<string, unknown>)?.status as string ||
+                   (response.instance as Record<string, unknown>)?.state as string ||
+                   (response.data as Record<string, unknown>)?.status as string ||
+                   "disconnected"
+
+    console.log("[Uazapi] Connect parsed - qrcode found:", qrcode ? `Yes (${qrcode.substring(0, 50)}...)` : "No", "status:", status)
+
+    return {
+      success: response.success as boolean ?? true,
+      qrcode: qrcode || undefined,
+      status: status as "DISCONNECTED" | "CONNECTING" | "CONNECTED" | "BANNED",
+      message: response.message as string,
+    }
   }
 
   /**

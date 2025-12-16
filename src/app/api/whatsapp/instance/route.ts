@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
 
       // Se não retornou QR code, aguardar e tentar novamente
       // A Uazapi pode precisar de tempo para gerar o QR após criar a instância
-      if (!connectResult.qrcode && connectResult.status !== "connected") {
+      if (!connectResult.qrcode && connectResult.status !== "CONNECTED") {
         console.log("[WhatsApp] QR vazio, aguardando 3s e tentando novamente...")
         await new Promise(resolve => setTimeout(resolve, 3000))
         connectResult = await uazapi.connectInstance(instance.apiToken)
