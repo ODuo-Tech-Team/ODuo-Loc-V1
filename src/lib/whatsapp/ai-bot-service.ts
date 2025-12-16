@@ -203,15 +203,32 @@ async function generateAIResponse(
     })
 
     if (equipment.length > 0) {
-      catalogContext = "\n\nEquipamentos disponíveis:\n" +
-        equipment.map((e) => {
-          let text = `- ${e.name}`
-          if (e.description) text += `: ${e.description}`
-          if (botConfig.includeRentalPrices && e.pricePerDay) {
-            text += ` (Diária: R$ ${e.pricePerDay})`
-          }
-          return text
-        }).join("\n")
+      const equipmentList = equipment.map((e) => {
+        let text = `- ${e.name}`
+        if (e.description) text += `: ${e.description}`
+        if (botConfig.includeRentalPrices && e.pricePerDay) {
+          text += ` (Diária: R$ ${e.pricePerDay})`
+        }
+        return text
+      }).join("\n")
+
+      catalogContext = `
+
+=== CATÁLOGO DE EQUIPAMENTOS DISPONÍVEIS ===
+${equipmentList}
+=== FIM DO CATÁLOGO ===
+
+REGRA CRÍTICA: Você SÓ pode confirmar disponibilidade dos equipamentos listados ACIMA.
+- Se o cliente perguntar por um equipamento que NÃO está na lista (ex: betoneira, escavadeira, etc), responda: "No momento não temos esse equipamento em nosso catálogo. Posso verificar com nossa equipe se conseguimos para você. Gostaria que eu transfira para um atendente?"
+- NUNCA diga "temos disponível" para equipamentos que não estão na lista acima.
+- Se não tiver certeza, diga que vai verificar.`
+    } else {
+      catalogContext = `
+
+ATENÇÃO: Nenhum equipamento cadastrado no sistema.
+- NÃO invente equipamentos ou diga que tem disponibilidade.
+- Para QUALQUER pergunta sobre equipamentos, responda: "Vou verificar nossa disponibilidade com a equipe. Posso transferir você para um atendente que poderá ajudar melhor?"
+- Colete os dados do cliente (nome, equipamento desejado, período) e transfira para um humano.`
     }
   }
 
@@ -469,8 +486,8 @@ export async function sendBotResponse(
         qualifiedAt: new Date(),
       }
 
-      // Transferir para humano
-      await handleBotTransfer(tenantId, conversationId, qualificationData)
+      // Transferir para humano (skipTransferMessage=true porque o bot já enviou o resumo)
+      await handleBotTransfer(tenantId, conversationId, qualificationData, true)
     }
   }
 }

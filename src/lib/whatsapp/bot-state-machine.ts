@@ -273,13 +273,17 @@ export async function handleNewConversation(
 /**
  * Handler para quando bot transfere para humano
  * Envia mensagem de transferência, muda para OPEN, desativa bot, auto-assign
+ *
+ * @param skipTransferMessage - Se true, não envia mensagem de transferência
+ *   (usado quando a qualificação foi detectada pela resposta do bot, que já incluiu resumo)
  */
 export async function handleBotTransfer(
   tenantId: string,
   conversationId: string,
-  qualificationData?: QualificationData
+  qualificationData?: QualificationData,
+  skipTransferMessage = false
 ): Promise<void> {
-  console.log(`[BotStateMachine] Bot transfer: ${conversationId}`, qualificationData)
+  console.log(`[BotStateMachine] Bot transfer: ${conversationId}`, { qualificationData, skipTransferMessage })
 
   // Buscar conversa com instância e config do bot para pegar a mensagem de transferência
   const conversation = await prisma.whatsAppConversation.findUnique({
@@ -299,7 +303,8 @@ export async function handleBotTransfer(
   }
 
   // Enviar mensagem de qualificação/transferência ANTES de desativar o bot
-  if (conversation.instance.apiToken && conversation.instance.status === "CONNECTED") {
+  // Pular se skipTransferMessage for true (bot já enviou resumo na resposta)
+  if (!skipTransferMessage && conversation.instance.apiToken && conversation.instance.status === "CONNECTED") {
     try {
       // Gerar mensagem contextual de transferência
       const transferMessage = generateQualificationTransferMessage(
@@ -344,6 +349,8 @@ export async function handleBotTransfer(
       console.error("[BotStateMachine] Error sending transfer message:", error)
       // Continuar mesmo se falhar ao enviar mensagem
     }
+  } else if (skipTransferMessage) {
+    console.log("[BotStateMachine] Skipping transfer message (bot already sent summary)")
   }
 
   // Atualizar conversa - desativar bot
