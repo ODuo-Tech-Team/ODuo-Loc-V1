@@ -179,6 +179,7 @@ export function WhatsAppInbox() {
             conversation={selectedConversation}
             onToggleDetails={() => setShowDetails(!showDetails)}
             showDetails={showDetails}
+            onUpdate={fetchConversations}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center bg-zinc-950">

@@ -347,11 +347,11 @@ async function handleUazapiMessage(
   // Processar máquina de estados (pode transferir para humano se qualificado)
   await processConversationState(tenantId, conversation.id, "INBOUND")
 
-  // Publicar evento SSE com info do remetente
+  // Publicar evento SSE com info do remetente (type em uppercase para consistência)
   await publishNewMessage(tenantId, conversation.id, {
     id: savedMessage.id,
     direction: "INBOUND",
-    type: messageType,
+    type: messageType.toUpperCase(),
     content,
     contactPhone: phone,
     contactName,

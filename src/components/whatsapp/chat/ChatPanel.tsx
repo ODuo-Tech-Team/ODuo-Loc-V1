@@ -8,6 +8,7 @@ import {
   Send,
   MoreVertical,
   Bot,
+  BotOff,
   User,
   Building,
   Info,
@@ -19,11 +20,14 @@ import {
   Copy,
   Trash2,
   X,
+  Archive,
+  Phone,
 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
@@ -68,12 +72,14 @@ interface ChatPanelProps {
   conversation: Conversation
   onToggleDetails: () => void
   showDetails: boolean
+  onUpdate?: () => void
 }
 
 export function ChatPanel({
   conversation,
   onToggleDetails,
   showDetails,
+  onUpdate,
 }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
@@ -118,11 +124,14 @@ export function ChatPanel({
     const removeListener = addEventListener("new_message", (data) => {
       if (data.conversationId === conversation.id) {
         // Adicionar nova mensagem
+        // Normalizar type para uppercase (SSE pode enviar lowercase)
+        const messageType = (data.message.type || "TEXT").toUpperCase()
         const newMessage: Message = {
           id: data.message.id,
           direction: data.message.direction as "INBOUND" | "OUTBOUND",
-          type: data.message.type,
+          type: messageType,
           content: data.message.content,
+          mediaUrl: data.message.mediaUrl,
           status: "DELIVERED",
           createdAt: new Date().toISOString(),
         }
@@ -234,10 +243,46 @@ export function ChatPanel({
         toast.success(
           conversation.isBot ? "Bot desativado" : "Bot ativado"
         )
+        onUpdate?.()
       }
     } catch (error) {
       toast.error("Erro ao alterar bot")
     }
+  }
+
+  // Copiar telefone
+  const handleCopyPhone = () => {
+    navigator.clipboard.writeText(conversation.contactPhone)
+    toast.success("Telefone copiado")
+  }
+
+  // Arquivar
+  const handleArchive = async () => {
+    try {
+      const isArchived = (conversation as any).archived === true
+      const response = await fetch(
+        `/api/whatsapp/conversations/${conversation.id}/archive`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ archived: !isArchived }),
+        }
+      )
+
+      if (response.ok) {
+        toast.success(isArchived ? "Conversa desarquivada" : "Conversa arquivada")
+        onUpdate?.()
+      } else {
+        toast.error("Erro ao arquivar")
+      }
+    } catch (error) {
+      toast.error("Erro ao arquivar")
+    }
+  }
+
+  // Ligar
+  const handleCall = () => {
+    window.open(`tel:${conversation.contactPhone}`, "_blank")
   }
 
   // Copiar mensagem
@@ -472,10 +517,33 @@ export function ChatPanel({
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={handleToggleBot}>
-                <Bot className="h-4 w-4 mr-2" />
-                {conversation.isBot ? "Desativar Bot" : "Ativar Bot"}
+                {conversation.isBot ? (
+                  <>
+                    <BotOff className="h-4 w-4 mr-2" />
+                    Desativar Bot
+                  </>
+                ) : (
+                  <>
+                    <Bot className="h-4 w-4 mr-2" />
+                    Ativar Bot
+                  </>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleCall}>
+                <Phone className="h-4 w-4 mr-2" />
+                Ligar
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleCopyPhone}>
+                <Copy className="h-4 w-4 mr-2" />
+                Copiar telefone
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleArchive}>
+                <Archive className="h-4 w-4 mr-2" />
+                {(conversation as any).archived ? "Desarquivar" : "Arquivar"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
