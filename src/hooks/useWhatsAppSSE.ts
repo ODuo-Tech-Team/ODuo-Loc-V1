@@ -8,6 +8,8 @@ export type SSEEventType =
   | "conversation_update"
   | "connection_status"
   | "typing"
+  | "new_assignment"
+  | "bot_transfer"
 
 export interface SSEEventData {
   new_message: {
@@ -39,6 +41,20 @@ export interface SSEEventData {
   typing: {
     conversationId: string
     isTyping: boolean
+  }
+  new_assignment: {
+    targetUserId: string
+    conversationId: string
+    title: string
+    body?: string
+    playSound?: boolean
+  }
+  bot_transfer: {
+    targetUserId: string
+    conversationId: string
+    title: string
+    body?: string
+    playSound?: boolean
   }
 }
 
@@ -109,6 +125,8 @@ export function useWhatsAppSSE(options: UseWhatsAppSSEOptions = {}) {
       "conversation_update",
       "connection_status",
       "typing",
+      "new_assignment",
+      "bot_transfer",
     ]
 
     eventTypes.forEach((eventType) => {

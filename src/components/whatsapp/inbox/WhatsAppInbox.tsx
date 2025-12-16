@@ -1,10 +1,12 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useSession } from "next-auth/react"
 import { ConversationList } from "./ConversationList"
 import { ChatPanel } from "../chat/ChatPanel"
 import { ContactDetails } from "./ContactDetails"
 import { useWhatsAppSSE } from "@/hooks/useWhatsAppSSE"
+import { useWhatsAppNotifications } from "@/hooks/useWhatsAppNotifications"
 
 export interface Conversation {
   id: string
@@ -17,6 +19,7 @@ export interface Conversation {
   lastMessageAt?: string
   isBot: boolean
   tags: string[]
+  archived?: boolean
   lead?: {
     id: string
     name: string
@@ -34,18 +37,36 @@ export interface Conversation {
   }
 }
 
+interface Agent {
+  id: string
+  name: string
+}
+
 export function WhatsAppInbox() {
+  const { data: session } = useSession()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [showDetails, setShowDetails] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
+  const [agents, setAgents] = useState<Agent[]>([])
 
   const { addEventListener } = useWhatsAppSSE({ enabled: true })
 
+  // Inicializar sistema de notificacoes
+  useWhatsAppNotifications({
+    enabled: true,
+    currentUserId: session?.user?.id,
+    playSound: true,
+  })
+
   // Buscar conversas
   const fetchConversations = useCallback(async () => {
+    setLoading(true)
     try {
-      const response = await fetch("/api/whatsapp/conversations")
+      const params = new URLSearchParams()
+      params.set("archived", showArchived ? "true" : "false")
+      const response = await fetch(`/api/whatsapp/conversations?${params}`)
       const data = await response.json()
       setConversations(data.conversations || [])
     } catch (error) {
@@ -53,11 +74,28 @@ export function WhatsAppInbox() {
     } finally {
       setLoading(false)
     }
+  }, [showArchived])
+
+  // Buscar agentes para atribuição
+  const fetchAgents = useCallback(async () => {
+    try {
+      const response = await fetch("/api/users?role=ADMIN,MANAGER,OPERATOR")
+      if (response.ok) {
+        const data = await response.json()
+        setAgents(data.users?.map((u: any) => ({ id: u.id, name: u.name })) || [])
+      }
+    } catch (error) {
+      console.error("Erro ao buscar agentes:", error)
+    }
   }, [])
 
   useEffect(() => {
     fetchConversations()
   }, [fetchConversations])
+
+  useEffect(() => {
+    fetchAgents()
+  }, [fetchAgents])
 
   // Escutar eventos SSE
   useEffect(() => {
@@ -128,6 +166,9 @@ export function WhatsAppInbox() {
           onSelect={setSelectedId}
           loading={loading}
           onRefresh={fetchConversations}
+          agents={agents}
+          showArchived={showArchived}
+          onToggleArchived={() => setShowArchived(!showArchived)}
         />
       </div>
 

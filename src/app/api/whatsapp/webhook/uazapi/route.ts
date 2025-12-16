@@ -6,6 +6,10 @@ import {
   publishConnectionStatus,
 } from "@/lib/whatsapp/sse-publisher"
 import { handleBotMessage } from "@/lib/whatsapp/ai-bot-service"
+import {
+  handleNewConversation,
+  processConversationState,
+} from "@/lib/whatsapp/bot-state-machine"
 
 const WEBHOOK_SECRET = process.env.UAZAPI_WEBHOOK_SECRET || ""
 
@@ -302,6 +306,9 @@ async function handleUazapiMessage(
     })
     console.log("[Webhook] Created new conversation:", conversation.id)
 
+    // Iniciar máquina de estados (bot ativo)
+    await handleNewConversation(tenantId, conversation.id)
+
     // Auto-link com Lead/Customer
     await autoLinkContact(conversation.id, tenantId, phone)
   } else {
@@ -336,6 +343,9 @@ async function handleUazapiMessage(
   })
 
   console.log("[Webhook] Saved message:", savedMessage.id)
+
+  // Processar máquina de estados (pode transferir para humano se qualificado)
+  await processConversationState(tenantId, conversation.id, "INBOUND")
 
   // Publicar evento SSE com info do remetente
   await publishNewMessage(tenantId, conversation.id, {

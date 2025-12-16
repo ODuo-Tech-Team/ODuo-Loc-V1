@@ -44,7 +44,10 @@ export async function GET(
           },
         },
         assignedTo: {
-          select: { id: true, name: true, email: true },
+          select: { id: true, name: true, email: true, avatarUrl: true },
+        },
+        team: {
+          select: { id: true, name: true, color: true },
         },
         instance: {
           select: { status: true, phoneNumber: true },
@@ -137,7 +140,10 @@ export async function PATCH(
           select: { id: true, name: true },
         },
         assignedTo: {
-          select: { id: true, name: true },
+          select: { id: true, name: true, avatarUrl: true },
+        },
+        team: {
+          select: { id: true, name: true, color: true },
         },
       },
     })

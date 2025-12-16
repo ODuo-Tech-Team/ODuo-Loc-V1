@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
-// PATCH - Habilitar/Desabilitar bot na conversa
+// PATCH - Arquivar/Desarquivar conversa
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -16,11 +16,11 @@ export async function PATCH(
 
     const { id } = await params
     const body = await request.json()
-    const { isBot } = body
+    const { archived } = body
 
-    if (typeof isBot !== "boolean") {
+    if (typeof archived !== "boolean") {
       return NextResponse.json(
-        { error: "isBot deve ser true ou false" },
+        { error: "Campo 'archived' deve ser boolean" },
         { status: 400 }
       )
     }
@@ -40,32 +40,24 @@ export async function PATCH(
       )
     }
 
-    const updated = await prisma.whatsAppConversation.update({
+    // Atualizar status de arquivamento
+    const updatedConversation = await prisma.whatsAppConversation.update({
       where: { id },
       data: {
-        isBot,
-        // Se ativando bot, marcar timestamp
-        ...(isBot && {
-          botActivatedAt: new Date(),
-          status: "PENDING",
-        }),
-        // Se desativando o bot, atribui ao usuário atual
-        ...(isBot === false && {
-          status: "OPEN",
-          assignedToId: session.user.id,
-          assignedAt: new Date(),
-        }),
+        archived,
+        archivedAt: archived ? new Date() : null,
+        archivedByUserId: archived ? session.user.id : null,
       },
     })
 
     return NextResponse.json({
       success: true,
-      isBot: updated.isBot,
+      archived: updatedConversation.archived,
     })
   } catch (error) {
-    console.error("Erro ao alterar status do bot:", error)
+    console.error("Erro ao arquivar conversa:", error)
     return NextResponse.json(
-      { error: "Erro ao alterar status do bot" },
+      { error: "Erro ao arquivar conversa" },
       { status: 500 }
     )
   }

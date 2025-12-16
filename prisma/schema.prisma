@@ -85,8 +85,9 @@ model Tenant {
   equipmentCategories EquipmentCategory[]
 
   // WhatsApp
-  whatsappInstance     WhatsAppInstance?
+  whatsappInstance      WhatsAppInstance?
   whatsappFollowUpRules WhatsAppFollowUpRule[]
+  whatsappTeams         WhatsAppTeam[]
 }
 
 // Usuário (Admin da locadora)
@@ -123,8 +124,10 @@ model User {
   leadActivities LeadActivity[]
 
   // WhatsApp
-  assignedConversations WhatsAppConversation[] @relation("AssignedConversations")
-  sentMessages          WhatsAppMessage[]      @relation("SentMessages")
+  assignedConversations  WhatsAppConversation[] @relation("AssignedConversations")
+  archivedConversations  WhatsAppConversation[] @relation("ArchivedConversations")
+  sentMessages           WhatsAppMessage[]      @relation("SentMessages")
+  whatsAppTeamMemberships WhatsAppTeamMember[]
 
   // Blog
   blogPosts BlogPost[]
@@ -1592,6 +1595,25 @@ model WhatsAppConversation {
   closedAt       DateTime?
   closedByUserId String?
 
+  // Time de atendimento
+  teamId String?
+  team   WhatsAppTeam? @relation(fields: [teamId], references: [id])
+
+  // Arquivamento (separado de status, como WhatsApp)
+  archived         Boolean   @default(false)
+  archivedAt       DateTime?
+  archivedByUserId String?
+  archivedByUser   User?     @relation("ArchivedConversations", fields: [archivedByUserId], references: [id])
+
+  // Timestamps de estado do bot
+  botActivatedAt     DateTime? // Quando o bot foi ativado
+  botTransferredAt   DateTime? // Quando transferiu para humano
+  lastAgentMessageAt DateTime? // Última mensagem de agente
+
+  // Dados de qualificação pelo bot
+  qualificationData  Json? // { rentalIntent, equipmentMentioned, customerName, etc }
+  qualificationScore Int?  // 0-100
+
   // Tags/Labels para organização
   tags String[]
 
@@ -1617,6 +1639,9 @@ model WhatsAppConversation {
   @@unique([instanceId, contactPhone])
   @@index([tenantId, status])
   @@index([tenantId, lastMessageAt])
+  @@index([tenantId, archived])
+  @@index([tenantId, assignedToId])
+  @@index([tenantId, teamId])
   @@index([leadId])
   @@index([customerId])
 }
@@ -1842,6 +1867,61 @@ model WhatsAppFollowUpRule {
   updatedAt DateTime @updatedAt
 
   @@index([tenantId, enabled])
+}
+
+// Time de atendimento WhatsApp (estilo Chatwoot)
+model WhatsAppTeam {
+  id String @id @default(cuid())
+
+  name        String  // "Vendas", "Suporte"
+  description String?
+  color       String? // "#10b981" para badge colorido
+
+  // Configuração de auto-atribuição
+  autoAssign     Boolean @default(true)
+  assignmentMode String  @default("round_robin") // round_robin, least_busy, manual
+
+  // Relacionamentos
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  members       WhatsAppTeamMember[]
+  conversations WhatsAppConversation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+// Membro de um time de atendimento
+model WhatsAppTeamMember {
+  id String @id @default(cuid())
+
+  role String @default("agent") // agent, leader
+
+  // Status de disponibilidade
+  isOnline       Boolean   @default(false)
+  lastAssignedAt DateTime?
+
+  // Métricas de atendimento
+  activeConversations Int @default(0)
+  totalHandled        Int @default(0)
+
+  // Relacionamentos
+  teamId String
+  team   WhatsAppTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+  @@index([teamId, isOnline])
 }
 
 // ============================================

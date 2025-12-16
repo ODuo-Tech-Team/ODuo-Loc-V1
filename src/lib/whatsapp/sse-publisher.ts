@@ -7,6 +7,8 @@ export type SSEEventType =
   | "conversation_update"
   | "connection_status"
   | "typing"
+  | "new_assignment"
+  | "bot_transfer"
 
 export interface SSEEvent {
   type: SSEEventType
@@ -179,5 +181,76 @@ export async function publishTyping(
   await publishSSEEvent(tenantId, "typing", {
     conversationId,
     isTyping,
+  })
+}
+
+/**
+ * Publica notificação para um usuário específico
+ * Usado para atribuições e transferências do bot
+ */
+export async function publishSSE(
+  userId: string,
+  type: "new_assignment" | "bot_transfer",
+  data: {
+    conversationId: string
+    title?: string
+    body?: string
+    playSound?: boolean
+  }
+): Promise<void> {
+  // Buscar tenantId do usuário para publicar no canal correto
+  const { prisma } = await import("@/lib/prisma")
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { tenantId: true },
+  })
+
+  if (!user) {
+    console.warn(`[SSE] User not found: ${userId}`)
+    return
+  }
+
+  await publishSSEEvent(user.tenantId, type, {
+    targetUserId: userId,
+    ...data,
+  })
+}
+
+/**
+ * Publica nova atribuição de conversa
+ */
+export async function publishNewAssignment(
+  tenantId: string,
+  userId: string,
+  conversationId: string,
+  contactName?: string
+): Promise<void> {
+  await publishSSEEvent(tenantId, "new_assignment", {
+    targetUserId: userId,
+    conversationId,
+    title: "Nova conversa atribuída",
+    body: contactName ? `Conversa com ${contactName}` : "Nova conversa para atendimento",
+    playSound: true,
+  })
+}
+
+/**
+ * Publica transferência do bot para humano
+ */
+export async function publishBotTransfer(
+  tenantId: string,
+  userId: string,
+  conversationId: string,
+  contactName?: string
+): Promise<void> {
+  await publishSSEEvent(tenantId, "bot_transfer", {
+    targetUserId: userId,
+    conversationId,
+    title: "Bot transferiu conversa",
+    body: contactName
+      ? `${contactName} foi qualificado pelo bot`
+      : "Cliente qualificado aguardando atendimento",
+    playSound: true,
   })
 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
-// PATCH - Habilitar/Desabilitar bot na conversa
+// PATCH - Marcar conversa como lida/não lida
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -16,11 +16,11 @@ export async function PATCH(
 
     const { id } = await params
     const body = await request.json()
-    const { isBot } = body
+    const { read } = body
 
-    if (typeof isBot !== "boolean") {
+    if (typeof read !== "boolean") {
       return NextResponse.json(
-        { error: "isBot deve ser true ou false" },
+        { error: "Campo 'read' deve ser boolean" },
         { status: 400 }
       )
     }
@@ -40,32 +40,23 @@ export async function PATCH(
       )
     }
 
-    const updated = await prisma.whatsAppConversation.update({
+    // Se marcando como lida, zerar unreadCount
+    // Se marcando como não lida, setar unreadCount = 1 (indicador visual)
+    const updatedConversation = await prisma.whatsAppConversation.update({
       where: { id },
       data: {
-        isBot,
-        // Se ativando bot, marcar timestamp
-        ...(isBot && {
-          botActivatedAt: new Date(),
-          status: "PENDING",
-        }),
-        // Se desativando o bot, atribui ao usuário atual
-        ...(isBot === false && {
-          status: "OPEN",
-          assignedToId: session.user.id,
-          assignedAt: new Date(),
-        }),
+        unreadCount: read ? 0 : 1,
       },
     })
 
     return NextResponse.json({
       success: true,
-      isBot: updated.isBot,
+      unreadCount: updatedConversation.unreadCount,
     })
   } catch (error) {
-    console.error("Erro ao alterar status do bot:", error)
+    console.error("Erro ao marcar conversa:", error)
     return NextResponse.json(
-      { error: "Erro ao alterar status do bot" },
+      { error: "Erro ao marcar conversa" },
       { status: 500 }
     )
   }

@@ -20,6 +20,11 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50")
     const offset = parseInt(searchParams.get("offset") || "0")
 
+    // Novos filtros
+    const archived = searchParams.get("archived")
+    const filter = searchParams.get("filter") // all, mine, unassigned, my_team
+    const teamId = searchParams.get("teamId")
+
     // Buscar instância do tenant
     const instance = await prisma.whatsAppInstance.findUnique({
       where: { tenantId: session.user.tenantId },
@@ -35,8 +40,42 @@ export async function GET(request: NextRequest) {
       tenantId: session.user.tenantId,
     }
 
+    // Filtro de arquivadas
+    if (archived === "true") {
+      where.archived = true
+    } else if (archived === "false" || !archived) {
+      // Por padrão, não mostrar arquivadas
+      where.archived = false
+    }
+
+    // Filtro de status
     if (status && status !== "all") {
       where.status = status
+    }
+
+    // Filtros de atribuição
+    if (filter === "mine") {
+      where.assignedToId = session.user.id
+    } else if (filter === "unassigned") {
+      where.assignedToId = null
+    } else if (filter === "my_team") {
+      // Buscar times do usuário
+      const userTeams = await prisma.whatsAppTeamMember.findMany({
+        where: { userId: session.user.id },
+        select: { teamId: true },
+      })
+      const teamIds = userTeams.map((t) => t.teamId)
+      if (teamIds.length > 0) {
+        where.teamId = { in: teamIds }
+      } else {
+        // Usuário não está em nenhum time
+        where.teamId = null
+      }
+    }
+
+    // Filtro de time específico
+    if (teamId) {
+      where.teamId = teamId
     }
 
     if (search) {
@@ -66,7 +105,10 @@ export async function GET(request: NextRequest) {
             select: { id: true, name: true, tradeName: true },
           },
           assignedTo: {
-            select: { id: true, name: true },
+            select: { id: true, name: true, avatarUrl: true },
+          },
+          team: {
+            select: { id: true, name: true, color: true },
           },
         },
         orderBy: { lastMessageAt: "desc" },

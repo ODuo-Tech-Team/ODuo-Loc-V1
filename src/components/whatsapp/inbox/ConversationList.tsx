@@ -3,21 +3,20 @@
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Search,
   RefreshCw,
-  Bot,
-  User,
-  Building,
   MessageCircle,
+  Archive,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { formatDistanceToNow } from "date-fns"
-import { ptBR } from "date-fns/locale"
 import { Conversation } from "./WhatsAppInbox"
-import { TagBadges } from "../tags/TagSelector"
+import { ConversationItem } from "./ConversationItem"
+
+interface Agent {
+  id: string
+  name: string
+}
 
 interface ConversationListProps {
   conversations: Conversation[]
@@ -25,6 +24,9 @@ interface ConversationListProps {
   onSelect: (id: string) => void
   loading: boolean
   onRefresh: () => void
+  agents?: Agent[]
+  showArchived?: boolean
+  onToggleArchived?: () => void
 }
 
 export function ConversationList({
@@ -33,6 +35,9 @@ export function ConversationList({
   onSelect,
   loading,
   onRefresh,
+  agents = [],
+  showArchived = false,
+  onToggleArchived,
 }: ConversationListProps) {
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState<"all" | "open" | "pending" | "closed">("all")
@@ -72,25 +77,6 @@ export function ConversationList({
     return true
   })
 
-  const getInitials = (name?: string, phone?: string) => {
-    if (name) {
-      return name
-        .split(" ")
-        .map((n) => n[0])
-        .slice(0, 2)
-        .join("")
-        .toUpperCase()
-    }
-    return phone?.slice(-2) || "?"
-  }
-
-  const formatPhone = (phone: string) => {
-    if (phone.length === 13 && phone.startsWith("55")) {
-      return `(${phone.slice(2, 4)}) ${phone.slice(4, 9)}-${phone.slice(9)}`
-    }
-    return phone
-  }
-
   return (
     <div className="flex flex-col h-full bg-zinc-900">
       {/* Header */}
@@ -116,7 +102,7 @@ export function ConversationList({
         </div>
 
         {/* Filtros de status */}
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-wrap">
           {(["all", "open", "pending", "closed"] as const).map((f) => (
             <Button
               key={f}
@@ -131,6 +117,17 @@ export function ConversationList({
               {f === "closed" && "Fechadas"}
             </Button>
           ))}
+          {onToggleArchived && (
+            <Button
+              variant={showArchived ? "secondary" : "ghost"}
+              size="sm"
+              className="h-7 text-xs ml-auto"
+              onClick={onToggleArchived}
+            >
+              <Archive className="h-3 w-3 mr-1" />
+              {showArchived ? "Ver ativas" : "Arquivadas"}
+            </Button>
+          )}
         </div>
 
         {/* Filtros de tags */}
@@ -171,85 +168,22 @@ export function ConversationList({
         {filteredConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-zinc-500">
             <MessageCircle className="h-8 w-8 mb-2" />
-            <p className="text-sm">Nenhuma conversa encontrada</p>
+            <p className="text-sm">
+              {showArchived
+                ? "Nenhuma conversa arquivada"
+                : "Nenhuma conversa encontrada"}
+            </p>
           </div>
         ) : (
           filteredConversations.map((conv) => (
-            <button
+            <ConversationItem
               key={conv.id}
-              onClick={() => onSelect(conv.id)}
-              className={cn(
-                "w-full p-3 flex items-start gap-3 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/50",
-                selectedId === conv.id && "bg-zinc-800"
-              )}
-            >
-              {/* Avatar */}
-              <Avatar className="h-12 w-12 flex-shrink-0">
-                <AvatarImage src={conv.profilePic} />
-                <AvatarFallback className="bg-emerald-500/20 text-emerald-500">
-                  {getInitials(conv.contactName, conv.contactPhone)}
-                </AvatarFallback>
-              </Avatar>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0 text-left">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium truncate">
-                    {conv.contactName || formatPhone(conv.contactPhone)}
-                  </span>
-                  {conv.isBot && (
-                    <Bot className="h-3 w-3 text-blue-400 flex-shrink-0" />
-                  )}
-                </div>
-
-                {/* Vínculo */}
-                {(conv.lead || conv.customer) && (
-                  <div className="flex items-center gap-1 text-xs text-zinc-500 mt-0.5">
-                    {conv.lead ? (
-                      <>
-                        <User className="h-3 w-3" />
-                        <span className="truncate">{conv.lead.name}</span>
-                      </>
-                    ) : conv.customer ? (
-                      <>
-                        <Building className="h-3 w-3" />
-                        <span className="truncate">{conv.customer.name}</span>
-                      </>
-                    ) : null}
-                  </div>
-                )}
-
-                {/* Última mensagem */}
-                <p className="text-sm text-zinc-400 truncate mt-1">
-                  {conv.lastMessage || "Nenhuma mensagem"}
-                </p>
-
-                {/* Tags */}
-                {conv.tags && conv.tags.length > 0 && (
-                  <div className="mt-1">
-                    <TagBadges tags={conv.tags} />
-                  </div>
-                )}
-              </div>
-
-              {/* Meta */}
-              <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                <span className="text-xs text-zinc-500">
-                  {conv.lastMessageAt
-                    ? formatDistanceToNow(new Date(conv.lastMessageAt), {
-                        addSuffix: false,
-                        locale: ptBR,
-                      })
-                    : ""}
-                </span>
-
-                {conv.unreadCount > 0 && (
-                  <Badge className="bg-emerald-500 text-white h-5 min-w-5 flex items-center justify-center">
-                    {conv.unreadCount > 99 ? "99+" : conv.unreadCount}
-                  </Badge>
-                )}
-              </div>
-            </button>
+              conversation={conv}
+              selected={selectedId === conv.id}
+              onSelect={() => onSelect(conv.id)}
+              onRefresh={onRefresh}
+              agents={agents}
+            />
           ))
         )}
       </div>
