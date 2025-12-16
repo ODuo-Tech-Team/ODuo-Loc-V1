@@ -16,15 +16,14 @@ import {
   User,
   Building,
   Phone,
-  Link,
   Unlink,
   Plus,
   ExternalLink,
   Bot,
-  Tag,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Conversation } from "./WhatsAppInbox"
+import { TagSelector } from "../tags/TagSelector"
 
 interface ContactDetailsProps {
   conversation: Conversation
@@ -38,6 +37,7 @@ export function ContactDetails({
   onUpdate,
 }: ContactDetailsProps) {
   const [linking, setLinking] = useState(false)
+  const [tags, setTags] = useState<string[]>(conversation.tags || [])
 
   const getInitials = (name?: string, phone?: string) => {
     if (name) {
@@ -305,21 +305,14 @@ export function ContactDetails({
         </div>
 
         {/* Tags */}
-        {conversation.tags && conversation.tags.length > 0 && (
-          <div className="space-y-2">
-            <label className="text-xs text-zinc-500 uppercase flex items-center gap-1">
-              <Tag className="h-3 w-3" />
-              Tags
-            </label>
-            <div className="flex flex-wrap gap-1">
-              {conversation.tags.map((tag) => (
-                <Badge key={tag} variant="secondary">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
+        <TagSelector
+          conversationId={conversation.id}
+          tags={tags}
+          onTagsChange={(newTags) => {
+            setTags(newTags)
+            onUpdate()
+          }}
+        />
 
         {/* Atribuído */}
         {conversation.assignedTo && (

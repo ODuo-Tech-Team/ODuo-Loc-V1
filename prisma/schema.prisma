@@ -85,7 +85,8 @@ model Tenant {
   equipmentCategories EquipmentCategory[]
 
   // WhatsApp
-  whatsappInstance WhatsAppInstance?
+  whatsappInstance     WhatsAppInstance?
+  whatsappFollowUpRules WhatsAppFollowUpRule[]
 }
 
 // Usuário (Admin da locadora)
@@ -1607,7 +1608,8 @@ model WhatsAppConversation {
   // Tenant (para queries diretas)
   tenantId String
 
-  messages WhatsAppMessage[]
+  messages          WhatsAppMessage[]
+  scheduledMessages WhatsAppScheduledMessage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1763,6 +1765,83 @@ model WhatsAppBotConfig {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Mensagem agendada/Follow-up
+model WhatsAppScheduledMessage {
+  id String @id @default(cuid())
+
+  // Conversa alvo
+  conversationId String
+  conversation   WhatsAppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  // Tipo de mensagem agendada
+  type ScheduledMessageType
+
+  // Conteudo
+  content String @db.Text
+
+  // Agendamento
+  scheduledFor DateTime
+  sentAt       DateTime?
+
+  // Status
+  status ScheduledMessageStatus @default(PENDING)
+  error  String?
+
+  // Configuracao
+  // Ex: { "inactiveDays": 3, "hasTag": "interessado", "noReply": true }
+  conditions Json?
+
+  // Tenant
+  tenantId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, status, scheduledFor])
+  @@index([conversationId])
+}
+
+enum ScheduledMessageType {
+  FOLLOW_UP    // Reativacao por inatividade
+  REMINDER     // Lembrete agendado manualmente
+  CAMPAIGN     // Campanha em massa
+}
+
+enum ScheduledMessageStatus {
+  PENDING   // Aguardando envio
+  SENT      // Enviada com sucesso
+  CANCELLED // Cancelada
+  FAILED    // Falha no envio
+}
+
+// Regras de follow-up automatico
+model WhatsAppFollowUpRule {
+  id String @id @default(cuid())
+
+  name    String
+  enabled Boolean @default(true)
+
+  // Trigger: quando executar
+  // Ex: { "type": "inactivity", "days": 3, "onlyIfNoReply": true }
+  trigger Json
+
+  // Acao: o que fazer
+  // Ex: { "message": "Ola! Vi que voce tinha interesse...", "includeContext": true }
+  action Json
+
+  // Limites
+  maxAttempts Int @default(2) // Maximo de follow-ups por conversa
+
+  // Tenant
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, enabled])
 }
 
 // ============================================

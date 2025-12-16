@@ -6,7 +6,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Send,
-  Paperclip,
   MoreVertical,
   Bot,
   User,
@@ -16,6 +15,10 @@ import {
   CheckCheck,
   Clock,
   Loader2,
+  Reply,
+  Copy,
+  Trash2,
+  X,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -29,6 +32,8 @@ import { ptBR } from "date-fns/locale"
 import { toast } from "sonner"
 import { useWhatsAppSSE } from "@/hooks/useWhatsAppSSE"
 import { Conversation } from "../inbox/WhatsAppInbox"
+import { AudioRecorder, AudioRecordButton } from "./AudioRecorder"
+import { FileUploader } from "./FileUploader"
 
 interface Message {
   id: string
@@ -44,6 +49,13 @@ interface Message {
     name: string
   }
   isFromBot?: boolean
+  quotedMessageId?: string
+  quotedMessage?: {
+    id: string
+    content?: string
+    type: string
+    direction: "INBOUND" | "OUTBOUND"
+  }
   metadata?: {
     isGroup?: boolean
     groupName?: string
@@ -67,6 +79,10 @@ export function ChatPanel({
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [text, setText] = useState("")
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null)
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null)
+  const [isRecording, setIsRecording] = useState(false)
+  const [sendingAudio, setSendingAudio] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -133,7 +149,9 @@ export function ChatPanel({
     if (!text.trim() || sending) return
 
     const messageText = text.trim()
+    const quotedMsg = replyingTo
     setText("")
+    setReplyingTo(null)
 
     // Adicionar mensagem otimisticamente
     const tempId = `temp-${Date.now()}`
@@ -144,6 +162,13 @@ export function ChatPanel({
       content: messageText,
       status: "PENDING",
       createdAt: new Date().toISOString(),
+      quotedMessageId: quotedMsg?.id,
+      quotedMessage: quotedMsg ? {
+        id: quotedMsg.id,
+        content: quotedMsg.content,
+        type: quotedMsg.type,
+        direction: quotedMsg.direction,
+      } : undefined,
     }
     setMessages((prev) => [...prev, tempMessage])
 
@@ -154,7 +179,11 @@ export function ChatPanel({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type: "text", content: messageText }),
+          body: JSON.stringify({
+            type: "text",
+            content: messageText,
+            quotedMessageId: quotedMsg?.id,
+          }),
         }
       )
 
@@ -208,6 +237,142 @@ export function ChatPanel({
       }
     } catch (error) {
       toast.error("Erro ao alterar bot")
+    }
+  }
+
+  // Copiar mensagem
+  const handleCopy = (message: Message) => {
+    if (message.content) {
+      navigator.clipboard.writeText(message.content)
+      toast.success("Mensagem copiada")
+    }
+  }
+
+  // Responder mensagem
+  const handleReply = (message: Message) => {
+    setReplyingTo(message)
+    textareaRef.current?.focus()
+  }
+
+  // Cancelar resposta
+  const handleCancelReply = () => {
+    setReplyingTo(null)
+  }
+
+  // Excluir mensagem (local)
+  const handleDelete = async (message: Message) => {
+    // Por enquanto, apenas remove localmente
+    // TODO: Implementar exclusão via API Uazapi se suportado
+    setMessages((prev) => prev.filter((m) => m.id !== message.id))
+    toast.success("Mensagem removida")
+  }
+
+  // Enviar arquivo (upload)
+  const handleSendFile = async (
+    result: { url: string; type: string; fileName: string },
+    caption?: string
+  ) => {
+    const tempId = `temp-file-${Date.now()}`
+    const messageType = result.type.toUpperCase() as Message["type"]
+
+    const tempMessage: Message = {
+      id: tempId,
+      direction: "OUTBOUND",
+      type: messageType,
+      content: caption || "",
+      mediaUrl: result.url,
+      mediaFileName: result.fileName,
+      status: "PENDING",
+      createdAt: new Date().toISOString(),
+    }
+    setMessages((prev) => [...prev, tempMessage])
+
+    try {
+      const response = await fetch(
+        `/api/whatsapp/conversations/${conversation.id}/messages`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: result.type,
+            media: result.url,
+            caption,
+            fileName: result.fileName,
+          }),
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error("Erro ao enviar arquivo")
+      }
+
+      const data = await response.json()
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === tempId ? { ...data.message, status: "SENT" } : m
+        )
+      )
+    } catch (error) {
+      toast.error("Erro ao enviar arquivo")
+      setMessages((prev) =>
+        prev.map((m) => (m.id === tempId ? { ...m, status: "FAILED" } : m))
+      )
+    }
+  }
+
+  // Enviar audio
+  const handleSendAudio = async (audioBase64: string) => {
+    setSendingAudio(true)
+
+    // Adicionar mensagem otimisticamente
+    const tempId = `temp-audio-${Date.now()}`
+    const tempMessage: Message = {
+      id: tempId,
+      direction: "OUTBOUND",
+      type: "AUDIO",
+      content: "",
+      status: "PENDING",
+      createdAt: new Date().toISOString(),
+    }
+    setMessages((prev) => [...prev, tempMessage])
+
+    try {
+      const response = await fetch(
+        `/api/whatsapp/conversations/${conversation.id}/messages`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "audio",
+            media: `data:audio/webm;base64,${audioBase64}`,
+          }),
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error("Erro ao enviar audio")
+      }
+
+      const data = await response.json()
+
+      // Atualizar mensagem com ID real
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === tempId ? { ...data.message, status: "SENT" } : m
+        )
+      )
+
+      setIsRecording(false)
+      toast.success("Audio enviado")
+    } catch (error) {
+      toast.error("Erro ao enviar audio")
+      // Marcar como falha
+      setMessages((prev) =>
+        prev.map((m) => (m.id === tempId ? { ...m, status: "FAILED" } : m))
+      )
+    } finally {
+      setSendingAudio(false)
     }
   }
 
@@ -350,10 +515,45 @@ export function ChatPanel({
 
                 <div
                   className={cn(
-                    "flex",
+                    "flex group",
                     isOutbound ? "justify-end" : "justify-start"
                   )}
+                  onMouseEnter={() => setHoveredMessageId(message.id)}
+                  onMouseLeave={() => setHoveredMessageId(null)}
                 >
+                  {/* Ações da mensagem - lado esquerdo para outbound */}
+                  {isOutbound && (
+                    <div className={cn(
+                      "flex items-center gap-1 mr-2 transition-opacity",
+                      hoveredMessageId === message.id ? "opacity-100" : "opacity-0"
+                    )}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <MoreVertical className="h-4 w-4 text-zinc-500" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuItem onClick={() => handleReply(message)}>
+                            <Reply className="h-4 w-4 mr-2" />
+                            Responder
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleCopy(message)}>
+                            <Copy className="h-4 w-4 mr-2" />
+                            Copiar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDelete(message)}
+                            className="text-red-500 focus:text-red-500"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
+
                   <div
                     className={cn(
                       "max-w-[70%] rounded-lg px-3 py-2",
@@ -362,6 +562,32 @@ export function ChatPanel({
                         : "bg-zinc-800 text-zinc-100"
                     )}
                   >
+                    {/* Mensagem citada (quote reply) */}
+                    {message.quotedMessage && (
+                      <div
+                        className={cn(
+                          "mb-2 p-2 rounded border-l-2 text-sm",
+                          isOutbound
+                            ? "bg-emerald-700/50 border-emerald-400"
+                            : "bg-zinc-700/50 border-zinc-500"
+                        )}
+                      >
+                        <p className={cn(
+                          "text-xs font-medium mb-0.5",
+                          message.quotedMessage.direction === "OUTBOUND"
+                            ? "text-emerald-300"
+                            : "text-zinc-400"
+                        )}>
+                          {message.quotedMessage.direction === "OUTBOUND" ? "Você" : conversation.contactName || "Contato"}
+                        </p>
+                        <p className="line-clamp-2 opacity-80">
+                          {message.quotedMessage.type === "TEXT"
+                            ? message.quotedMessage.content
+                            : `[${message.quotedMessage.type}]`}
+                        </p>
+                      </div>
+                    )}
+
                     {/* Nome do remetente (para grupos) */}
                     {!isOutbound && message.metadata?.senderName && (
                       <div className="text-xs font-medium text-emerald-400 mb-1">
@@ -418,6 +644,39 @@ export function ChatPanel({
                       {isOutbound && <MessageStatus status={message.status} />}
                     </div>
                   </div>
+
+                  {/* Ações da mensagem - lado direito para inbound */}
+                  {!isOutbound && (
+                    <div className={cn(
+                      "flex items-center gap-1 ml-2 transition-opacity",
+                      hoveredMessageId === message.id ? "opacity-100" : "opacity-0"
+                    )}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <MoreVertical className="h-4 w-4 text-zinc-500" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-40">
+                          <DropdownMenuItem onClick={() => handleReply(message)}>
+                            <Reply className="h-4 w-4 mr-2" />
+                            Responder
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleCopy(message)}>
+                            <Copy className="h-4 w-4 mr-2" />
+                            Copiar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDelete(message)}
+                            className="text-red-500 focus:text-red-500"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
                 </div>
               </div>
             )
@@ -427,33 +686,79 @@ export function ChatPanel({
       </div>
 
       {/* Input */}
-      <div className="p-3 border-t border-zinc-800 bg-zinc-900">
-        <div className="flex items-end gap-2">
-          <Button variant="ghost" size="icon" className="flex-shrink-0">
-            <Paperclip className="h-5 w-5" />
-          </Button>
+      <div className="border-t border-zinc-800 bg-zinc-900">
+        {/* Preview da resposta */}
+        {replyingTo && (
+          <div className="px-3 pt-3 pb-0">
+            <div className="flex items-start gap-2 p-2 bg-zinc-800 rounded-lg border-l-2 border-emerald-500">
+              <Reply className="h-4 w-4 text-zinc-500 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-emerald-400 mb-0.5">
+                  {replyingTo.direction === "OUTBOUND" ? "Você" : conversation.contactName || "Contato"}
+                </p>
+                <p className="text-sm text-zinc-400 truncate">
+                  {replyingTo.type === "TEXT"
+                    ? replyingTo.content
+                    : `[${replyingTo.type}]`}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 flex-shrink-0"
+                onClick={handleCancelReply}
+              >
+                <X className="h-4 w-4 text-zinc-500" />
+              </Button>
+            </div>
+          </div>
+        )}
 
-          <Textarea
-            ref={textareaRef}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Digite uma mensagem..."
-            className="min-h-[44px] max-h-32 resize-none bg-zinc-800 border-zinc-700"
-            rows={1}
-          />
+        <div className="p-3">
+          {isRecording ? (
+            <AudioRecorder
+              onSend={handleSendAudio}
+              onCancel={() => setIsRecording(false)}
+              sending={sendingAudio}
+            />
+          ) : (
+            <div className="flex items-end gap-2">
+              <FileUploader
+                onUpload={handleSendFile}
+                disabled={sending}
+              />
 
-          <Button
-            onClick={handleSend}
-            disabled={!text.trim() || sending}
-            className="flex-shrink-0 bg-emerald-600 hover:bg-emerald-700"
-          >
-            {sending ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Send className="h-5 w-5" />
-            )}
-          </Button>
+              <Textarea
+                ref={textareaRef}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Digite uma mensagem..."
+                className="min-h-[44px] max-h-32 resize-none bg-zinc-800 border-zinc-700"
+                rows={1}
+              />
+
+              {/* Botao de audio ou enviar */}
+              {text.trim() ? (
+                <Button
+                  onClick={handleSend}
+                  disabled={sending}
+                  className="flex-shrink-0 bg-emerald-600 hover:bg-emerald-700"
+                >
+                  {sending ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Send className="h-5 w-5" />
+                  )}
+                </Button>
+              ) : (
+                <AudioRecordButton
+                  onClick={() => setIsRecording(true)}
+                  disabled={sending}
+                />
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

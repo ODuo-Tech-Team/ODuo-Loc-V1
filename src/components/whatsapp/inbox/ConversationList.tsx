@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils"
 import { formatDistanceToNow } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { Conversation } from "./WhatsAppInbox"
+import { TagBadges } from "../tags/TagSelector"
 
 interface ConversationListProps {
   conversations: Conversation[]
@@ -35,6 +36,12 @@ export function ConversationList({
 }: ConversationListProps) {
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState<"all" | "open" | "pending" | "closed">("all")
+  const [tagFilter, setTagFilter] = useState<string | null>(null)
+
+  // Coletar todas as tags únicas das conversas
+  const allTags = Array.from(
+    new Set(conversations.flatMap((c) => c.tags || []))
+  ).sort()
 
   const filteredConversations = conversations.filter((conv) => {
     // Filtro de busca
@@ -55,6 +62,11 @@ export function ConversationList({
       if (filter === "open" && conv.status !== "OPEN") return false
       if (filter === "pending" && conv.status !== "PENDING") return false
       if (filter === "closed" && conv.status !== "CLOSED") return false
+    }
+
+    // Filtro de tag
+    if (tagFilter && (!conv.tags || !conv.tags.includes(tagFilter))) {
+      return false
     }
 
     return true
@@ -103,7 +115,7 @@ export function ConversationList({
           </Button>
         </div>
 
-        {/* Filtros */}
+        {/* Filtros de status */}
         <div className="flex gap-1">
           {(["all", "open", "pending", "closed"] as const).map((f) => (
             <Button
@@ -120,6 +132,38 @@ export function ConversationList({
             </Button>
           ))}
         </div>
+
+        {/* Filtros de tags */}
+        {allTags.length > 0 && (
+          <div className="flex gap-1 mt-2 flex-wrap">
+            {tagFilter && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-xs text-zinc-400"
+                onClick={() => setTagFilter(null)}
+              >
+                Limpar tag
+              </Button>
+            )}
+            {allTags.slice(0, 5).map((tag) => (
+              <Button
+                key={tag}
+                variant={tagFilter === tag ? "secondary" : "outline"}
+                size="sm"
+                className="h-6 text-xs"
+                onClick={() => setTagFilter(tagFilter === tag ? null : tag)}
+              >
+                {tag}
+              </Button>
+            ))}
+            {allTags.length > 5 && (
+              <span className="text-xs text-zinc-500 self-center">
+                +{allTags.length - 5}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Lista */}
@@ -179,6 +223,13 @@ export function ConversationList({
                 <p className="text-sm text-zinc-400 truncate mt-1">
                   {conv.lastMessage || "Nenhuma mensagem"}
                 </p>
+
+                {/* Tags */}
+                {conv.tags && conv.tags.length > 0 && (
+                  <div className="mt-1">
+                    <TagBadges tags={conv.tags} />
+                  </div>
+                )}
               </div>
 
               {/* Meta */}
