@@ -22,6 +22,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   X,
   User,
   Building,
@@ -33,15 +43,26 @@ import {
   Loader2,
   TrendingUp,
   DollarSign,
+  Archive,
+  ArchiveRestore,
+  Trash2,
+  Copy,
+  UserPlus,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Conversation } from "./WhatsAppInbox"
 import { TagSelector } from "../tags/TagSelector"
 
+interface Agent {
+  id: string
+  name: string
+}
+
 interface ContactDetailsProps {
   conversation: Conversation
   onClose: () => void
   onUpdate: () => void
+  agents?: Agent[]
 }
 
 // Status do Kanban com labels em português
@@ -56,9 +77,12 @@ export function ContactDetails({
   conversation,
   onClose,
   onUpdate,
+  agents = [],
 }: ContactDetailsProps) {
   const [linking, setLinking] = useState(false)
   const [tags, setTags] = useState<string[]>(conversation.tags || [])
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [actionLoading, setActionLoading] = useState(false)
 
   // Estado do dialog de criar negócio
   const [showCreateDealDialog, setShowCreateDealDialog] = useState(false)
@@ -205,6 +229,91 @@ export function ContactDetails({
       toast.error("Erro ao alterar bot")
     }
   }
+
+  // Arquivar/Desarquivar
+  const handleArchive = async () => {
+    setActionLoading(true)
+    try {
+      const isArchived = (conversation as any).archived === true
+      const response = await fetch(
+        `/api/whatsapp/conversations/${conversation.id}/archive`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ archived: !isArchived }),
+        }
+      )
+
+      if (response.ok) {
+        toast.success(isArchived ? "Conversa desarquivada" : "Conversa arquivada")
+        onUpdate()
+      } else {
+        toast.error("Erro ao arquivar conversa")
+      }
+    } catch (error) {
+      toast.error("Erro ao arquivar conversa")
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // Atribuir agente
+  const handleAssign = async (userId: string | null) => {
+    setActionLoading(true)
+    try {
+      const response = await fetch(
+        `/api/whatsapp/conversations/${conversation.id}/assign`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId }),
+        }
+      )
+
+      if (response.ok) {
+        toast.success(userId ? "Conversa atribuida" : "Atribuicao removida")
+        onUpdate()
+      } else {
+        toast.error("Erro ao atribuir conversa")
+      }
+    } catch (error) {
+      toast.error("Erro ao atribuir conversa")
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // Excluir conversa
+  const handleDelete = async () => {
+    setActionLoading(true)
+    try {
+      const response = await fetch(
+        `/api/whatsapp/conversations/${conversation.id}`,
+        { method: "DELETE" }
+      )
+
+      if (response.ok) {
+        toast.success("Conversa excluida")
+        onClose()
+        onUpdate()
+      } else {
+        toast.error("Erro ao excluir conversa")
+      }
+    } catch (error) {
+      toast.error("Erro ao excluir conversa")
+    } finally {
+      setActionLoading(false)
+      setShowDeleteDialog(false)
+    }
+  }
+
+  // Copiar telefone
+  const handleCopyPhone = () => {
+    navigator.clipboard.writeText(conversation.contactPhone)
+    toast.success("Telefone copiado")
+  }
+
+  const isArchived = (conversation as any).archived === true
 
   return (
     <div className="flex flex-col h-full bg-zinc-900">
@@ -374,22 +483,44 @@ export function ContactDetails({
           }}
         />
 
-        {/* Atribuído */}
-        {conversation.assignedTo && (
-          <div className="space-y-2">
-            <label className="text-xs text-zinc-500 uppercase">
-              Atribuido a
-            </label>
-            <div className="flex items-center gap-2 p-2 bg-zinc-800 rounded">
-              <Avatar className="h-6 w-6">
-                <AvatarFallback className="text-xs">
-                  {conversation.assignedTo.name[0]}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-sm">{conversation.assignedTo.name}</span>
-            </div>
-          </div>
-        )}
+        {/* Atribuir agente */}
+        <div className="space-y-2">
+          <label className="text-xs text-zinc-500 uppercase">
+            <UserPlus className="h-3 w-3 inline mr-1" />
+            Atribuir a
+          </label>
+          <Select
+            value={conversation.assignedTo?.id || "none"}
+            onValueChange={(value) => handleAssign(value === "none" ? null : value)}
+            disabled={actionLoading}
+          >
+            <SelectTrigger className="bg-zinc-800 border-zinc-700">
+              <SelectValue placeholder="Selecione um agente" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">
+                <span className="text-zinc-500">Sem atribuicao</span>
+              </SelectItem>
+              {agents.map((agent) => (
+                <SelectItem key={agent.id} value={agent.id}>
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-5 w-5">
+                      <AvatarFallback className="text-xs">
+                        {agent.name[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    {agent.name}
+                  </div>
+                </SelectItem>
+              ))}
+              {agents.length === 0 && (
+                <SelectItem value="no-agents" disabled>
+                  <span className="text-zinc-500 text-sm">Nenhum agente disponivel</span>
+                </SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* Ações rápidas */}
         <div className="space-y-2">
@@ -405,9 +536,77 @@ export function ContactDetails({
               <Phone className="h-4 w-4 mr-2" />
               Ligar
             </Button>
+
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={handleCopyPhone}
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              Copiar telefone
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={handleArchive}
+              disabled={actionLoading}
+            >
+              {isArchived ? (
+                <>
+                  <ArchiveRestore className="h-4 w-4 mr-2" />
+                  Desarquivar
+                </>
+              ) : (
+                <>
+                  <Archive className="h-4 w-4 mr-2" />
+                  Arquivar
+                </>
+              )}
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full justify-start text-red-500 hover:text-red-400 hover:bg-red-500/10"
+              onClick={() => setShowDeleteDialog(true)}
+              disabled={actionLoading}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir conversa
+            </Button>
           </div>
         </div>
       </div>
+
+      {/* Dialog de confirmação de exclusão */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir conversa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acao nao pode ser desfeita. Todas as mensagens desta conversa
+              serao excluidas permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={actionLoading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={actionLoading}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {actionLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                "Excluir"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Dialog de Criar Negócio */}
       <Dialog open={showCreateDealDialog} onOpenChange={setShowCreateDealDialog}>

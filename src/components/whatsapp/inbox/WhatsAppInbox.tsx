@@ -202,6 +202,7 @@ export function WhatsAppInbox() {
             conversation={selectedConversation}
             onClose={() => setShowDetails(false)}
             onUpdate={() => fetchConversations()}
+            agents={agents}
           />
         </div>
       )}

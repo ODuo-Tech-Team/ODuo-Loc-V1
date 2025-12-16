@@ -1,15 +1,16 @@
 import { NextRequest } from "next/server"
 import { auth } from "@/lib/auth"
-import { getRecentEvents, SSEEvent } from "@/lib/whatsapp/sse-publisher"
-import { Redis } from "@upstash/redis"
+import { getRecentEvents } from "@/lib/whatsapp/sse-publisher"
 
-// Configuração para SSE
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-const CHANNEL_PREFIX = "whatsapp:events:"
+// Intervalo de polling em ms (2 segundos)
+const POLL_INTERVAL = 2000
 
-// GET - Stream de eventos SSE
+// Timeout maximo da conexao (5 minutos)
+const CONNECTION_TIMEOUT = 5 * 60 * 1000
+
 export async function GET(request: NextRequest) {
   const session = await auth()
 
@@ -18,117 +19,75 @@ export async function GET(request: NextRequest) {
   }
 
   const tenantId = session.user.tenantId
-  const { searchParams } = new URL(request.url)
-  const lastEventId = searchParams.get("lastEventId")
-  const since = lastEventId ? parseInt(lastEventId) : undefined
 
-  // Criar stream de resposta
+  // Pegar lastEventId do query param (para reconexao)
+  const lastEventId = request.nextUrl.searchParams.get("lastEventId")
+  let lastTimestamp = lastEventId ? parseInt(lastEventId, 10) : Date.now()
+
+  // Headers para SSE
+  const headers = new Headers({
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no",
+  })
+
   const encoder = new TextEncoder()
-  let controller: ReadableStreamDefaultController<Uint8Array>
-  let isConnectionOpen = true
-  let heartbeatInterval: NodeJS.Timeout
+  let isConnected = true
+  const startTime = Date.now()
 
-  const stream = new ReadableStream<Uint8Array>({
-    async start(ctrl) {
-      controller = ctrl
+  const stream = new ReadableStream({
+    async start(controller) {
+      // Enviar evento de conexao
+      controller.enqueue(
+        encoder.encode(`event: connected\ndata: {"status":"connected"}\n\n`)
+      )
 
-      // Enviar eventos recentes se o cliente reconectou
-      if (since) {
+      // Funcao para buscar e enviar eventos
+      const pollEvents = async () => {
+        if (!isConnected) return
+
+        // Verificar timeout
+        if (Date.now() - startTime > CONNECTION_TIMEOUT) {
+          controller.enqueue(
+            encoder.encode(`event: timeout\ndata: {"message":"Connection timeout"}\n\n`)
+          )
+          controller.close()
+          return
+        }
+
         try {
-          const recentEvents = await getRecentEvents(tenantId, since)
-          for (const event of recentEvents) {
-            sendEvent(event)
+          const events = await getRecentEvents(tenantId, lastTimestamp)
+
+          for (const event of events) {
+            if (event.timestamp > lastTimestamp) {
+              // Enviar evento formatado para SSE
+              const sseData = `event: ${event.type}\nid: ${event.timestamp}\ndata: ${JSON.stringify(event.data)}\n\n`
+              controller.enqueue(encoder.encode(sseData))
+              lastTimestamp = event.timestamp
+            }
           }
         } catch (error) {
-          console.error("[SSE] Error sending recent events:", error)
+          console.error("[SSE] Error polling events:", error)
+        }
+
+        // Enviar heartbeat para manter conexao viva
+        controller.enqueue(encoder.encode(`: heartbeat\n\n`))
+
+        // Agendar proximo poll
+        if (isConnected) {
+          setTimeout(pollEvents, POLL_INTERVAL)
         }
       }
 
-      // Iniciar heartbeat para manter conexão viva
-      heartbeatInterval = setInterval(() => {
-        if (isConnectionOpen) {
-          try {
-            controller.enqueue(encoder.encode(": heartbeat\n\n"))
-          } catch {
-            // Conexão fechada
-            isConnectionOpen = false
-            clearInterval(heartbeatInterval)
-          }
-        }
-      }, 30000) // 30 segundos
-
-      // Polling do Redis para novos eventos
-      // Nota: Upstash REST API não suporta pub/sub real,
-      // então fazemos polling na lista de eventos recentes
-      pollForEvents()
+      // Iniciar polling
+      pollEvents()
     },
 
     cancel() {
-      isConnectionOpen = false
-      clearInterval(heartbeatInterval)
+      isConnected = false
     },
   })
 
-  function sendEvent(event: SSEEvent) {
-    if (!isConnectionOpen) return
-
-    try {
-      const data = `id: ${event.timestamp}\nevent: ${event.type}\ndata: ${JSON.stringify(event.data)}\n\n`
-      controller.enqueue(encoder.encode(data))
-    } catch {
-      isConnectionOpen = false
-    }
-  }
-
-  async function pollForEvents() {
-    let lastTimestamp = since || Date.now()
-
-    while (isConnectionOpen) {
-      try {
-        // Aguarda 1 segundo entre polls
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-
-        if (!isConnectionOpen) break
-
-        // Busca eventos novos
-        const redis = new Redis({
-          url: process.env.UPSTASH_REDIS_REST_URL!,
-          token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-        })
-
-        const listKey = `${CHANNEL_PREFIX}${tenantId}:recent`
-        const events = await redis.lrange(listKey, 0, 9) // Últimos 10
-
-        if (events && events.length > 0) {
-          const newEvents = events
-            .map((e) => {
-              try {
-                return typeof e === "string" ? JSON.parse(e) : e
-              } catch {
-                return null
-              }
-            })
-            .filter((e): e is SSEEvent => e !== null && e.timestamp > lastTimestamp)
-            .reverse() // Ordem cronológica
-
-          for (const event of newEvents) {
-            sendEvent(event)
-            lastTimestamp = Math.max(lastTimestamp, event.timestamp)
-          }
-        }
-      } catch (error) {
-        console.error("[SSE] Polling error:", error)
-        // Continua tentando
-      }
-    }
-  }
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no", // Nginx
-    },
-  })
+  return new Response(stream, { headers })
 }
