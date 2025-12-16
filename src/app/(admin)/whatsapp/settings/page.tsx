@@ -12,7 +12,9 @@ import {
   Key,
   Check,
   X,
-  Save
+  Save,
+  Webhook,
+  RefreshCw
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -46,6 +48,8 @@ export default function WhatsAppSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [connecting, setConnecting] = useState(false)
   const [savingBot, setSavingBot] = useState(false)
+  const [configuringWebhook, setConfiguringWebhook] = useState(false)
+  const [webhookUrl, setWebhookUrl] = useState<string | null>(null)
 
   // Bot config state
   const [botConfig, setBotConfig] = useState<BotConfig | null>(null)
@@ -55,9 +59,10 @@ export default function WhatsAppSettingsPage() {
   // Buscar dados
   const fetchData = useCallback(async () => {
     try {
-      const [instanceRes, botRes] = await Promise.all([
+      const [instanceRes, botRes, webhookRes] = await Promise.all([
         fetch("/api/whatsapp/instance"),
         fetch("/api/whatsapp/bot/config"),
+        fetch("/api/whatsapp/instance/webhook"),
       ])
 
       const instanceData = await instanceRes.json()
@@ -67,6 +72,11 @@ export default function WhatsAppSettingsPage() {
         const botData = await botRes.json()
         setBotConfig(botData.config)
       }
+
+      if (webhookRes.ok) {
+        const webhookData = await webhookRes.json()
+        setWebhookUrl(webhookData.webhookUrl)
+      }
     } catch (error) {
       console.error("Erro ao buscar dados:", error)
       toast.error("Erro ao carregar configuracoes")
@@ -74,6 +84,29 @@ export default function WhatsAppSettingsPage() {
       setLoading(false)
     }
   }, [])
+
+  // Configurar webhook
+  const handleConfigureWebhook = async () => {
+    try {
+      setConfiguringWebhook(true)
+      const response = await fetch("/api/whatsapp/instance/webhook", {
+        method: "POST",
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setWebhookUrl(data.webhookUrl)
+        toast.success("Webhook configurado com sucesso!")
+      } else {
+        toast.error(data.error || "Erro ao configurar webhook")
+      }
+    } catch (error) {
+      toast.error("Erro ao configurar webhook")
+    } finally {
+      setConfiguringWebhook(false)
+    }
+  }
 
   useEffect(() => {
     fetchData()
@@ -229,6 +262,47 @@ export default function WhatsAppSettingsPage() {
           />
         </CardContent>
       </Card>
+
+      {/* Webhook - Sincronização de Mensagens */}
+      {instance?.status === "CONNECTED" && (
+        <Card className="bg-zinc-900/50 border-zinc-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Webhook className="h-5 w-5" />
+              Webhook (Sincronizacao de Mensagens)
+            </CardTitle>
+            <CardDescription>
+              Configure o webhook para receber mensagens em tempo real
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>URL do Webhook</Label>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 px-3 py-2 bg-zinc-800 rounded-md text-sm text-zinc-300 overflow-x-auto">
+                  {webhookUrl || "Nao configurado"}
+                </code>
+              </div>
+              <p className="text-xs text-zinc-500">
+                Esta URL recebe as mensagens da Uazapi. Clique em &quot;Configurar&quot; se as mensagens nao estiverem sincronizando.
+              </p>
+            </div>
+
+            <Button
+              onClick={handleConfigureWebhook}
+              disabled={configuringWebhook}
+              variant="outline"
+            >
+              {configuringWebhook ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Configurar Webhook
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Configuração do Bot de IA */}
       {instance?.status === "CONNECTED" && botConfig && (

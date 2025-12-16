@@ -19,6 +19,19 @@ const WEBHOOK_SECRET = process.env.UAZAPI_WEBHOOK_SECRET || ""
 // POST - Receber webhook da Uazapi
 export async function POST(request: NextRequest) {
   try {
+    // Log raw body para debug
+    const rawBody = await request.text()
+    console.log("[Webhook] ========== NOVO EVENTO ==========")
+    console.log("[Webhook] Raw body:", rawBody.substring(0, 500))
+
+    let payload: WebhookPayload
+    try {
+      payload = JSON.parse(rawBody)
+    } catch {
+      console.error("[Webhook] Erro ao parsear JSON:", rawBody.substring(0, 200))
+      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
+    }
+
     // Validar secret (se configurado)
     if (WEBHOOK_SECRET) {
       const signature = request.headers.get("x-webhook-secret")
@@ -28,8 +41,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const payload: WebhookPayload = await request.json()
-    console.log("[Webhook] Received:", payload.event, "Instance:", payload.instance)
+    console.log("[Webhook] Event:", payload.event)
+    console.log("[Webhook] Instance:", payload.instance)
+    console.log("[Webhook] Data keys:", payload.data ? Object.keys(payload.data) : "null")
 
     // Buscar instância pelo instanceId
     const instance = await prisma.whatsAppInstance.findFirst({
