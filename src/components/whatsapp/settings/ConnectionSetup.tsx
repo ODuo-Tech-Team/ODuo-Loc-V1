@@ -158,7 +158,7 @@ export function ConnectionSetup({
             {qrCode ? (
               <div className="p-4 bg-white rounded-lg">
                 <img
-                  src={`data:image/png;base64,${qrCode}`}
+                  src={qrCode.startsWith("data:") ? qrCode : `data:image/png;base64,${qrCode}`}
                   alt="QR Code"
                   className="w-64 h-64"
                 />
