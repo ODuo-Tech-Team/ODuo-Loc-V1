@@ -45,7 +45,7 @@ export async function GET() {
       orderBy: { name: "asc" },
     })
 
-    return NextResponse.json(teams)
+    return NextResponse.json({ teams })
   } catch (error) {
     console.error("Erro ao listar times:", error)
     return NextResponse.json(

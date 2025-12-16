@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { getUazapiClient } from "./uazapi-client"
 import { getSystemPrompt, shouldTransferToHuman, isWithinBusinessHours } from "./ai-prompts"
 import { handleBotTransfer, QualificationData, detectEquipmentMentioned } from "./bot-state-machine"
+import { publishNewMessage } from "./sse-publisher"
 
 interface ProcessMessageResult {
   shouldRespond: boolean
@@ -415,7 +416,7 @@ export async function sendBotResponse(
 
   if (result.success && result.messageId) {
     // Salvar mensagem no banco
-    await prisma.whatsAppMessage.create({
+    const savedMessage = await prisma.whatsAppMessage.create({
       data: {
         externalId: result.messageId,
         conversationId,
@@ -427,6 +428,17 @@ export async function sendBotResponse(
         isFromBot: true,
       },
     })
+
+    // Publicar via SSE para atualizar chat em tempo real
+    await publishNewMessage(tenantId, conversationId, {
+      id: savedMessage.id,
+      direction: "OUTBOUND",
+      type: "TEXT",
+      content: response,
+      isFromBot: true,
+    })
+
+    console.log("[AI Bot] Message published via SSE:", savedMessage.id)
 
     // Atualizar última mensagem
     await prisma.whatsAppConversation.update({

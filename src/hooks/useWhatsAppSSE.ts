@@ -20,8 +20,13 @@ export interface SSEEventData {
       type: string
       content?: string
       mediaUrl?: string
-      contactPhone: string
+      contactPhone?: string
       contactName?: string
+      metadata?: Record<string, any>
+      isFromBot?: boolean
+      isGroup?: boolean
+      groupName?: string
+      senderName?: string
     }
   }
   message_status: {

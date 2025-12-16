@@ -132,6 +132,8 @@ export async function publishNewMessage(
     isGroup?: boolean
     groupName?: string
     senderName?: string
+    // Campo de bot
+    isFromBot?: boolean
   }
 ): Promise<void> {
   await publishSSEEvent(tenantId, "new_message", {
