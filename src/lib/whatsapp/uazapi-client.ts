@@ -177,15 +177,31 @@ export class UazapiClient {
 
     console.log("[Uazapi] Status raw response:", JSON.stringify(response, null, 2))
 
-    // Parsear resposta (status pode estar em vários lugares)
-    const status = (response.status as string) ||
-                   (response.state as string) ||
-                   (response.instance as Record<string, unknown>)?.status as string ||
-                   "disconnected"
+    // Parsear status - pode ser objeto { connected: true } ou string
+    let status: string = "disconnected"
 
+    // Verificar se status é um objeto com connected: true
+    const statusObj = response.status as Record<string, unknown> | undefined
+    if (statusObj && typeof statusObj === "object" && statusObj.connected === true) {
+      status = "connected"
+    } else if (statusObj && typeof statusObj === "object" && statusObj.connected === false) {
+      status = "disconnected"
+    } else if (typeof response.status === "string") {
+      status = response.status
+    } else if (typeof response.state === "string") {
+      status = response.state
+    }
+
+    // Também verificar instance.status (string)
+    const instanceData = response.instance as Record<string, unknown> | undefined
+    if (instanceData?.status && typeof instanceData.status === "string") {
+      status = instanceData.status
+    }
+
+    // Extrair telefone
     const phone = (response.phone as string) ||
                   (response.owner as string) ||
-                  (response.instance as Record<string, unknown>)?.owner as string ||
+                  (instanceData?.owner as string) ||
                   undefined
 
     console.log("[Uazapi] Status parsed - status:", status, "phone:", phone || "N/A")
