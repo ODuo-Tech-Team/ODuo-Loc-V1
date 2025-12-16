@@ -122,13 +122,22 @@ export async function POST(
       )
     }
 
+    // Verificar se tem apiToken
+    if (!conversation.instance.apiToken) {
+      return NextResponse.json(
+        { error: "Token da instância não configurado" },
+        { status: 400 }
+      )
+    }
+
     const uazapi = getUazapiClient()
+    const instanceToken = conversation.instance.apiToken
     let result: any
 
-    // Enviar mensagem baseado no tipo
+    // Enviar mensagem baseado no tipo (agora usando apiToken)
     switch (type) {
       case "text":
-        result = await uazapi.sendTextMessage(conversation.instance.instanceId, {
+        result = await uazapi.sendTextMessage(instanceToken, {
           phone: conversation.contactPhone,
           message: content,
           quotedMessageId,
@@ -136,7 +145,7 @@ export async function POST(
         break
 
       case "image":
-        result = await uazapi.sendImage(conversation.instance.instanceId, {
+        result = await uazapi.sendImage(instanceToken, {
           phone: conversation.contactPhone,
           media: mediaUrl,
           caption: content,
@@ -145,7 +154,7 @@ export async function POST(
         break
 
       case "video":
-        result = await uazapi.sendVideo(conversation.instance.instanceId, {
+        result = await uazapi.sendVideo(instanceToken, {
           phone: conversation.contactPhone,
           media: mediaUrl,
           caption: content,
@@ -154,7 +163,7 @@ export async function POST(
         break
 
       case "audio":
-        result = await uazapi.sendAudio(conversation.instance.instanceId, {
+        result = await uazapi.sendAudio(instanceToken, {
           phone: conversation.contactPhone,
           media: mediaUrl,
           quotedMessageId,
@@ -162,7 +171,7 @@ export async function POST(
         break
 
       case "document":
-        result = await uazapi.sendDocument(conversation.instance.instanceId, {
+        result = await uazapi.sendDocument(instanceToken, {
           phone: conversation.contactPhone,
           media: mediaUrl,
           fileName: fileName || "document",
@@ -178,7 +187,7 @@ export async function POST(
             { status: 400 }
           )
         }
-        result = await uazapi.sendLocation(conversation.instance.instanceId, {
+        result = await uazapi.sendLocation(instanceToken, {
           phone: conversation.contactPhone,
           latitude,
           longitude,

@@ -15,16 +15,27 @@ export interface SSEEvent {
   timestamp: number
 }
 
-// Cliente Redis para pub/sub
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-})
+// Cliente Redis para pub/sub - pode ser null se não configurado
+let redis: Redis | null = null
+
+// Verificar se Redis está configurado
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN
+
+if (redisUrl && redisToken) {
+  redis = new Redis({
+    url: redisUrl,
+    token: redisToken,
+  })
+} else {
+  console.warn("[SSE Publisher] Redis não configurado - eventos SSE desabilitados")
+}
 
 const CHANNEL_PREFIX = "whatsapp:events:"
 
 /**
  * Publica um evento SSE para um tenant específico
+ * Se Redis não estiver configurado, apenas loga o evento (não bloqueia)
  */
 export async function publishSSEEvent(
   tenantId: string,
@@ -36,6 +47,12 @@ export async function publishSSEEvent(
     tenantId,
     data,
     timestamp: Date.now(),
+  }
+
+  // Se Redis não está configurado, apenas logar e retornar
+  if (!redis) {
+    console.log(`[SSE] Event (no Redis): ${type}`, JSON.stringify(data).substring(0, 100))
+    return
   }
 
   const channel = `${CHANNEL_PREFIX}${tenantId}`
@@ -62,6 +79,11 @@ export async function getRecentEvents(
   tenantId: string,
   since?: number
 ): Promise<SSEEvent[]> {
+  // Se Redis não está configurado, retornar array vazio
+  if (!redis) {
+    return []
+  }
+
   const listKey = `${CHANNEL_PREFIX}${tenantId}:recent`
 
   try {

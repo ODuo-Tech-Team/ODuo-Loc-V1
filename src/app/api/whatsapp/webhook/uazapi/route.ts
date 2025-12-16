@@ -167,34 +167,53 @@ async function handleUazapiMessage(
 
   console.log("[Webhook] handleUazapiMessage - chat:", chat ? "yes" : "no", "message:", message ? "yes" : "no")
 
+  // Log completo para debug de estrutura de grupos
+  if (message) {
+    console.log("[Webhook] Message fields:", Object.keys(message).join(", "))
+    console.log("[Webhook] message.participant:", message.participant)
+    console.log("[Webhook] message.pushName:", message.pushName)
+    console.log("[Webhook] message.sender:", message.sender)
+    console.log("[Webhook] message.senderName:", message.senderName)
+  }
+
   if (!chat && !message) {
     console.log("[Webhook] No chat or message in payload")
     return
   }
 
-  // Extrair telefone - pode estar em vários lugares
-  // Formato chatid: "5511942902107@s.whatsapp.net" ou "5511942902107-1621833676@g.us" (grupo)
-  let phone = ""
+  // Detectar se é mensagem de grupo
+  const isGroup = message?.chatid?.includes("@g.us") || chat?.jid?.includes("@g.us")
 
-  // Tentar extrair do message.chatid primeiro
+  // Extrair telefone do chat/grupo
+  let chatPhone = ""
   if (message?.chatid) {
-    phone = message.chatid.split("@")[0].split("-")[0] // Remove @s.whatsapp.net e IDs de grupo
+    chatPhone = message.chatid.split("@")[0].split("-")[0]
   }
-  // Fallback para chat.jid
-  if (!phone && chat?.jid) {
-    phone = chat.jid.split("@")[0].split("-")[0]
+  if (!chatPhone && chat?.jid) {
+    chatPhone = chat.jid.split("@")[0].split("-")[0]
   }
-  // Fallback para chat.phone
-  if (!phone && chat?.phone) {
-    phone = chat.phone
+  if (!chatPhone && chat?.phone) {
+    chatPhone = chat.phone
   }
+
+  // Para grupos, extrair o telefone do REMETENTE (participant)
+  let senderPhone = ""
+  if (isGroup) {
+    // Em grupos, o remetente está em participant ou sender
+    const participant = message?.participant || message?.sender || ""
+    senderPhone = participant.split("@")[0]
+    console.log("[Webhook] Group message - sender phone:", senderPhone)
+  }
+
+  // Usar o telefone do remetente se for grupo, senão usar o telefone do chat
+  const phone = isGroup ? senderPhone : chatPhone
 
   if (!phone) {
-    console.log("[Webhook] Could not extract phone from chatid:", message?.chatid, "jid:", chat?.jid)
+    console.log("[Webhook] Could not extract phone from chatid:", message?.chatid, "participant:", message?.participant)
     return
   }
 
-  console.log("[Webhook] Extracted phone:", phone)
+  console.log("[Webhook] Extracted phone:", phone, isGroup ? "(from group)" : "(direct)")
 
   // Verificar se é mensagem enviada por nós (fromMe)
   const isFromMe = message?.fromMe === true
@@ -217,7 +236,19 @@ async function handleUazapiMessage(
 
   const messageType = message?.type || "text"
   const messageId = message?.id || `msg_${Date.now()}`
-  const contactName = chat?.name || phone
+
+  // Extrair nome do contato - priorizar pushName/senderName para grupos
+  let contactName = ""
+  if (isGroup) {
+    // Para grupos, tentar pegar nome do remetente
+    contactName = message?.pushName || message?.senderName || message?.participant?.split("@")[0] || phone
+  } else {
+    // Para chats diretos, usar nome do chat
+    contactName = chat?.name || message?.pushName || phone
+  }
+
+  // Nome do grupo (se for grupo)
+  const groupName = isGroup ? (chat?.name || "Grupo") : null
 
   // Validar timestamp - pode ser em segundos, milissegundos ou inválido
   let messageDate = new Date()
@@ -243,6 +274,7 @@ async function handleUazapiMessage(
   }
 
   console.log("[Webhook] Message content:", content?.substring(0, 100), "timestamp:", messageDate.toISOString())
+  console.log("[Webhook] Contact name:", contactName, isGroup ? `(grupo: ${groupName})` : "(direto)")
 
   console.log("[Webhook] Processing message from:", phone, "content:", content?.substring(0, 50))
 
@@ -285,7 +317,7 @@ async function handleUazapiMessage(
     })
   }
 
-  // Salvar mensagem
+  // Salvar mensagem com metadata de grupo se aplicável
   const savedMessage = await prisma.whatsAppMessage.create({
     data: {
       externalId: messageId,
@@ -294,12 +326,18 @@ async function handleUazapiMessage(
       type: messageType.toUpperCase() as any,
       content,
       status: "DELIVERED",
+      metadata: isGroup ? {
+        isGroup: true,
+        groupName,
+        senderName: contactName,
+        senderPhone: phone,
+      } : undefined,
     },
   })
 
   console.log("[Webhook] Saved message:", savedMessage.id)
 
-  // Publicar evento SSE
+  // Publicar evento SSE com info do remetente
   await publishNewMessage(tenantId, conversation.id, {
     id: savedMessage.id,
     direction: "INBOUND",
@@ -307,6 +345,12 @@ async function handleUazapiMessage(
     content,
     contactPhone: phone,
     contactName,
+    // Info adicional para grupos
+    ...(isGroup && {
+      isGroup: true,
+      groupName,
+      senderName: contactName,
+    }),
   })
 
   // Processar com bot de IA

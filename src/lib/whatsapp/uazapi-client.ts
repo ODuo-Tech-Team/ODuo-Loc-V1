@@ -264,19 +264,20 @@ export class UazapiClient {
   }
 
   // ============================================
-  // Send Messages
+  // Send Messages (usam token da instância)
   // ============================================
 
   /**
    * Envia mensagem de texto
+   * @param instanceToken - Token da instância (apiToken), não o instanceId
    */
   async sendTextMessage(
-    instanceId: string,
+    instanceToken: string,
     data: SendTextMessageRequest
   ): Promise<SendMessageResponse> {
     const phone = normalizePhone(data.phone)
 
-    return this.request<SendMessageResponse>(`/message/sendText/${instanceId}`, {
+    return this.requestWithToken<SendMessageResponse>("/message/sendText", instanceToken, {
       method: "POST",
       body: JSON.stringify({
         number: phone,
@@ -288,14 +289,15 @@ export class UazapiClient {
 
   /**
    * Envia imagem
+   * @param instanceToken - Token da instância (apiToken)
    */
   async sendImage(
-    instanceId: string,
+    instanceToken: string,
     data: SendMediaMessageRequest
   ): Promise<SendMessageResponse> {
     const phone = normalizePhone(data.phone)
 
-    return this.request<SendMessageResponse>(`/message/sendMedia/${instanceId}`, {
+    return this.requestWithToken<SendMessageResponse>("/message/sendMedia", instanceToken, {
       method: "POST",
       body: JSON.stringify({
         number: phone,
@@ -309,14 +311,15 @@ export class UazapiClient {
 
   /**
    * Envia vídeo
+   * @param instanceToken - Token da instância (apiToken)
    */
   async sendVideo(
-    instanceId: string,
+    instanceToken: string,
     data: SendMediaMessageRequest
   ): Promise<SendMessageResponse> {
     const phone = normalizePhone(data.phone)
 
-    return this.request<SendMessageResponse>(`/message/sendMedia/${instanceId}`, {
+    return this.requestWithToken<SendMessageResponse>("/message/sendMedia", instanceToken, {
       method: "POST",
       body: JSON.stringify({
         number: phone,
@@ -330,14 +333,15 @@ export class UazapiClient {
 
   /**
    * Envia áudio
+   * @param instanceToken - Token da instância (apiToken)
    */
   async sendAudio(
-    instanceId: string,
+    instanceToken: string,
     data: SendMediaMessageRequest
   ): Promise<SendMessageResponse> {
     const phone = normalizePhone(data.phone)
 
-    return this.request<SendMessageResponse>(`/message/sendMedia/${instanceId}`, {
+    return this.requestWithToken<SendMessageResponse>("/message/sendMedia", instanceToken, {
       method: "POST",
       body: JSON.stringify({
         number: phone,
@@ -350,14 +354,15 @@ export class UazapiClient {
 
   /**
    * Envia documento
+   * @param instanceToken - Token da instância (apiToken)
    */
   async sendDocument(
-    instanceId: string,
+    instanceToken: string,
     data: SendMediaMessageRequest
   ): Promise<SendMessageResponse> {
     const phone = normalizePhone(data.phone)
 
-    return this.request<SendMessageResponse>(`/message/sendMedia/${instanceId}`, {
+    return this.requestWithToken<SendMessageResponse>("/message/sendMedia", instanceToken, {
       method: "POST",
       body: JSON.stringify({
         number: phone,
@@ -372,14 +377,15 @@ export class UazapiClient {
 
   /**
    * Envia localização
+   * @param instanceToken - Token da instância (apiToken)
    */
   async sendLocation(
-    instanceId: string,
+    instanceToken: string,
     data: SendLocationRequest
   ): Promise<SendMessageResponse> {
     const phone = normalizePhone(data.phone)
 
-    return this.request<SendMessageResponse>(`/message/sendLocation/${instanceId}`, {
+    return this.requestWithToken<SendMessageResponse>("/message/sendLocation", instanceToken, {
       method: "POST",
       body: JSON.stringify({
         number: phone,
@@ -393,14 +399,15 @@ export class UazapiClient {
 
   /**
    * Envia contato
+   * @param instanceToken - Token da instância (apiToken)
    */
   async sendContact(
-    instanceId: string,
+    instanceToken: string,
     data: SendContactRequest
   ): Promise<SendMessageResponse> {
     const phone = normalizePhone(data.phone)
 
-    return this.request<SendMessageResponse>(`/message/sendContact/${instanceId}`, {
+    return this.requestWithToken<SendMessageResponse>("/message/sendContact", instanceToken, {
       method: "POST",
       body: JSON.stringify({
         number: phone,
