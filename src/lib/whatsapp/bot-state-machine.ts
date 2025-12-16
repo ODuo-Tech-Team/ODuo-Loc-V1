@@ -174,16 +174,81 @@ export async function handleNewConversation(
 
 /**
  * Handler para quando bot transfere para humano
- * Muda para OPEN, desativa bot, auto-assign
+ * Envia mensagem de transferência, muda para OPEN, desativa bot, auto-assign
  */
 export async function handleBotTransfer(
   tenantId: string,
   conversationId: string,
   qualificationData?: QualificationData
 ): Promise<void> {
-  console.log(`[BotStateMachine] Bot transfer: ${conversationId}`)
+  console.log(`[BotStateMachine] Bot transfer: ${conversationId}`, qualificationData)
 
-  // Atualizar conversa
+  // Buscar conversa com instância e config do bot para pegar a mensagem de transferência
+  const conversation = await prisma.whatsAppConversation.findUnique({
+    where: { id: conversationId },
+    include: {
+      instance: {
+        include: {
+          botConfig: true,
+        },
+      },
+    },
+  })
+
+  if (!conversation) {
+    console.error("[BotStateMachine] Conversation not found:", conversationId)
+    return
+  }
+
+  // Enviar mensagem de qualificação/transferência ANTES de desativar o bot
+  if (conversation.instance.apiToken && conversation.instance.status === "CONNECTED") {
+    try {
+      // Gerar mensagem contextual de transferência
+      const transferMessage = generateQualificationTransferMessage(
+        qualificationData,
+        conversation.contactName,
+        conversation.instance.botConfig?.transferMessage
+      )
+
+      const uazapi = getUazapiClient()
+      const result = await uazapi.sendTextMessage(conversation.instance.apiToken, {
+        phone: conversation.contactPhone,
+        message: transferMessage,
+      })
+
+      if (result.success && result.messageId) {
+        // Salvar mensagem do bot
+        await prisma.whatsAppMessage.create({
+          data: {
+            externalId: result.messageId,
+            conversationId,
+            direction: "OUTBOUND",
+            type: "TEXT",
+            content: transferMessage,
+            status: "SENT",
+            sentAt: new Date(),
+            isFromBot: true,
+          },
+        })
+
+        // Atualizar última mensagem
+        await prisma.whatsAppConversation.update({
+          where: { id: conversationId },
+          data: {
+            lastMessage: transferMessage.substring(0, 100),
+            lastMessageAt: new Date(),
+          },
+        })
+
+        console.log("[BotStateMachine] Transfer message sent successfully")
+      }
+    } catch (error) {
+      console.error("[BotStateMachine] Error sending transfer message:", error)
+      // Continuar mesmo se falhar ao enviar mensagem
+    }
+  }
+
+  // Atualizar conversa - desativar bot
   await prisma.whatsAppConversation.update({
     where: { id: conversationId },
     data: {
@@ -197,6 +262,47 @@ export async function handleBotTransfer(
 
   // Auto-atribuir a um agente
   await autoAssignOnBotTransfer(tenantId, conversationId)
+}
+
+/**
+ * Gera mensagem de transferência contextual baseada na qualificação
+ */
+function generateQualificationTransferMessage(
+  qualification?: QualificationData,
+  contactName?: string | null,
+  customTransferMessage?: string | null
+): string {
+  // Se tem mensagem customizada, usar ela
+  if (customTransferMessage) {
+    return customTransferMessage
+  }
+
+  const name = contactName ? `, ${contactName}` : ""
+
+  // Mensagem contextualizada baseada no que foi detectado
+  if (qualification?.equipmentMentioned && qualification.equipmentMentioned.length > 0) {
+    const equipments = qualification.equipmentMentioned.join(", ")
+    return `Perfeito${name}! Vi que você tem interesse em ${equipments}. 👍
+
+Para dar continuidade ao seu atendimento e garantir a melhor proposta, vou transferir você para um de nossos especialistas.
+
+Aguarde um momento, já já um atendente vai continuar sua conversa! 👨‍💼`
+  }
+
+  if (qualification?.rentalIntent) {
+    return `Ótimo${name}! Entendi seu interesse em locação. 👍
+
+Para oferecer as melhores condições e tirar todas as suas dúvidas, vou transferir você para um de nossos especialistas.
+
+Aguarde um momento, em breve um atendente vai continuar seu atendimento! 👨‍💼`
+  }
+
+  // Mensagem padrão
+  return `Obrigado pelo interesse${name}! 😊
+
+Para dar continuidade ao seu atendimento, vou transferir você para um de nossos atendentes.
+
+Aguarde um momento, logo alguém da nossa equipe vai continuar a conversa! 👨‍💼`
 }
 
 /**
@@ -390,7 +496,13 @@ export async function processConversationState(
 ): Promise<void> {
   const conversation = await prisma.whatsAppConversation.findUnique({
     where: { id: conversationId },
-    select: { status: true, isBot: true },
+    select: {
+      status: true,
+      isBot: true,
+      botTransferredAt: true,
+      botActivatedAt: true,
+      qualificationScore: true,
+    },
   })
 
   if (!conversation) return
@@ -406,11 +518,31 @@ export async function processConversationState(
 
   // Se mensagem é do cliente (INBOUND) e bot está ativo
   if (messageDirection === "INBOUND" && conversation.isBot) {
+    // IMPORTANTE: Se o bot foi reativado APÓS uma transferência recente, não transferir automaticamente
+    // Isso evita loop de transferência quando o usuário reativa o bot manualmente
+    if (conversation.botTransferredAt && conversation.botActivatedAt) {
+      const transferTime = new Date(conversation.botTransferredAt).getTime()
+      const activateTime = new Date(conversation.botActivatedAt).getTime()
+
+      // Se foi reativado APÓS a última transferência, pular auto-transfer
+      if (activateTime > transferTime) {
+        console.log("[BotStateMachine] Bot was manually reactivated after transfer, skipping auto-transfer check")
+        return
+      }
+    }
+
+    // Se já tem score alto de qualificação anterior, não transferir novamente
+    if (conversation.qualificationScore && conversation.qualificationScore >= 60) {
+      console.log("[BotStateMachine] Conversation already qualified before, skipping auto-transfer")
+      return
+    }
+
     // Verificar se deve transferir para humano
     const { shouldTransfer, qualificationData } =
       await shouldTransferToHuman(conversationId)
 
     if (shouldTransfer) {
+      console.log("[BotStateMachine] Qualification detected, will transfer. Score:", qualificationData?.score)
       await handleBotTransfer(tenantId, conversationId, qualificationData)
     }
   }

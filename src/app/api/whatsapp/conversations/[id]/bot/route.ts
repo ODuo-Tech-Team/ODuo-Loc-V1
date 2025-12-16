@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 
 // PATCH - Habilitar/Desabilitar bot na conversa
 export async function PATCH(
@@ -40,23 +41,34 @@ export async function PATCH(
       )
     }
 
+    // Preparar dados de update baseado no novo estado do bot
+    let updateData: Prisma.WhatsAppConversationUpdateInput
+
+    if (isBot) {
+      // Ativando bot: resetar qualificação para permitir nova conversa
+      updateData = {
+        isBot: true,
+        botActivatedAt: new Date(),
+        status: "PENDING",
+        qualificationScore: null,
+        qualificationData: Prisma.JsonNull,
+      }
+    } else {
+      // Desativando bot: atribuir ao usuário atual
+      updateData = {
+        isBot: false,
+        status: "OPEN",
+        assignedTo: { connect: { id: session.user.id } },
+        assignedAt: new Date(),
+      }
+    }
+
     const updated = await prisma.whatsAppConversation.update({
       where: { id },
-      data: {
-        isBot,
-        // Se ativando bot, marcar timestamp
-        ...(isBot && {
-          botActivatedAt: new Date(),
-          status: "PENDING",
-        }),
-        // Se desativando o bot, atribui ao usuário atual
-        ...(isBot === false && {
-          status: "OPEN",
-          assignedToId: session.user.id,
-          assignedAt: new Date(),
-        }),
-      },
+      data: updateData,
     })
+
+    console.log("[Bot Toggle] Bot", isBot ? "enabled" : "disabled", "for conversation:", id)
 
     return NextResponse.json({
       success: true,
