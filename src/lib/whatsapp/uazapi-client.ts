@@ -166,11 +166,35 @@ export class UazapiClient {
 
   /**
    * Obtém o status de conexão de uma instância
+   * Docs: GET /instance/status - usa token da instância
    */
-  async getConnectionStatus(instanceId: string): Promise<ConnectionStatusResponse> {
-    return this.request<ConnectionStatusResponse>(`/instance/connectionState/${instanceId}`, {
-      method: "GET",
-    })
+  async getConnectionStatus(instanceToken: string): Promise<ConnectionStatusResponse> {
+    const response = await this.requestWithToken<Record<string, unknown>>(
+      "/instance/status",
+      instanceToken,
+      { method: "GET" }
+    )
+
+    console.log("[Uazapi] Status raw response:", JSON.stringify(response, null, 2))
+
+    // Parsear resposta (status pode estar em vários lugares)
+    const status = (response.status as string) ||
+                   (response.state as string) ||
+                   (response.instance as Record<string, unknown>)?.status as string ||
+                   "disconnected"
+
+    const phone = (response.phone as string) ||
+                  (response.owner as string) ||
+                  (response.instance as Record<string, unknown>)?.owner as string ||
+                  undefined
+
+    console.log("[Uazapi] Status parsed - status:", status, "phone:", phone || "N/A")
+
+    return {
+      success: true,
+      status: status as "DISCONNECTED" | "CONNECTING" | "CONNECTED" | "BANNED",
+      phone,
+    }
   }
 
   /**

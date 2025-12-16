@@ -52,8 +52,8 @@ export async function GET(request: NextRequest) {
     // Se NÃO é refresh, apenas verificar status sem gerar novo QR
     if (!forceRefresh) {
       try {
-        // Verificar status atual da conexão
-        const statusResult = await uazapi.getConnectionStatus(instance.instanceId)
+        // Verificar status atual da conexão (usa apiToken, não instanceId)
+        const statusResult = await uazapi.getConnectionStatus(instance.apiToken)
         console.log("[WhatsApp QR] Status check:", JSON.stringify(statusResult, null, 2))
 
         const normalizedStatus = normalizeInstanceStatus(statusResult.status)
