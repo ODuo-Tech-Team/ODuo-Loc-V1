@@ -19,6 +19,7 @@ export interface SSEEventData {
       direction: string
       type: string
       content?: string
+      mediaUrl?: string
       contactPhone: string
       contactName?: string
     }

@@ -318,6 +318,32 @@ export class UazapiClient {
   }
 
   /**
+   * Envia mídia usando endpoint unificado /send/media
+   * Tipos suportados: image, video, document, audio, ptt (voice message)
+   * @param instanceToken - Token da instância (apiToken)
+   */
+  async sendMedia(
+    instanceToken: string,
+    data: SendMediaMessageRequest & { mediaType: "image" | "video" | "document" | "audio" | "ptt" }
+  ): Promise<SendMessageResponse> {
+    const phone = normalizePhone(data.phone)
+
+    const response = await this.requestWithToken<Record<string, unknown>>("/send/media", instanceToken, {
+      method: "POST",
+      body: JSON.stringify({
+        number: phone,
+        type: data.mediaType,
+        file: data.media,
+        text: data.caption || "",
+        ...(data.fileName && { docName: data.fileName }),
+        ...(data.quotedMessageId && { replyid: data.quotedMessageId }),
+      }),
+    })
+
+    return this.parseSendMessageResponse(response)
+  }
+
+  /**
    * Envia imagem
    * @param instanceToken - Token da instância (apiToken)
    */
@@ -325,19 +351,7 @@ export class UazapiClient {
     instanceToken: string,
     data: SendMediaMessageRequest
   ): Promise<SendMessageResponse> {
-    const phone = normalizePhone(data.phone)
-
-    const response = await this.requestWithToken<Record<string, unknown>>("/send/image", instanceToken, {
-      method: "POST",
-      body: JSON.stringify({
-        number: phone,
-        image: data.media,
-        caption: data.caption || "",
-        ...(data.quotedMessageId && { replyid: data.quotedMessageId }),
-      }),
-    })
-
-    return this.parseSendMessageResponse(response)
+    return this.sendMedia(instanceToken, { ...data, mediaType: "image" })
   }
 
   /**
@@ -348,41 +362,19 @@ export class UazapiClient {
     instanceToken: string,
     data: SendMediaMessageRequest
   ): Promise<SendMessageResponse> {
-    const phone = normalizePhone(data.phone)
-
-    const response = await this.requestWithToken<Record<string, unknown>>("/send/video", instanceToken, {
-      method: "POST",
-      body: JSON.stringify({
-        number: phone,
-        video: data.media,
-        caption: data.caption || "",
-        ...(data.quotedMessageId && { replyid: data.quotedMessageId }),
-      }),
-    })
-
-    return this.parseSendMessageResponse(response)
+    return this.sendMedia(instanceToken, { ...data, mediaType: "video" })
   }
 
   /**
-   * Envia áudio
+   * Envia áudio (mensagem de voz - PTT)
    * @param instanceToken - Token da instância (apiToken)
    */
   async sendAudio(
     instanceToken: string,
     data: SendMediaMessageRequest
   ): Promise<SendMessageResponse> {
-    const phone = normalizePhone(data.phone)
-
-    const response = await this.requestWithToken<Record<string, unknown>>("/send/audio", instanceToken, {
-      method: "POST",
-      body: JSON.stringify({
-        number: phone,
-        audio: data.media,
-        ...(data.quotedMessageId && { replyid: data.quotedMessageId }),
-      }),
-    })
-
-    return this.parseSendMessageResponse(response)
+    // Usar ptt para mensagem de voz (como WhatsApp nativo)
+    return this.sendMedia(instanceToken, { ...data, mediaType: "ptt" })
   }
 
   /**
@@ -393,20 +385,7 @@ export class UazapiClient {
     instanceToken: string,
     data: SendMediaMessageRequest
   ): Promise<SendMessageResponse> {
-    const phone = normalizePhone(data.phone)
-
-    const response = await this.requestWithToken<Record<string, unknown>>("/send/document", instanceToken, {
-      method: "POST",
-      body: JSON.stringify({
-        number: phone,
-        document: data.media,
-        filename: data.fileName || "document",
-        caption: data.caption || "",
-        ...(data.quotedMessageId && { replyid: data.quotedMessageId }),
-      }),
-    })
-
-    return this.parseSendMessageResponse(response)
+    return this.sendMedia(instanceToken, { ...data, mediaType: "document" })
   }
 
   /**

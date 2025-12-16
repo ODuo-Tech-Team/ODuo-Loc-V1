@@ -88,9 +88,12 @@ export async function POST(
 
     const { id } = await params
     const body = await request.json()
-    const { type = "text", content, mediaUrl, fileName, latitude, longitude, quotedMessageId } = body
+    // Aceitar tanto 'media' quanto 'mediaUrl' para compatibilidade
+    const { type = "text", content, media, mediaUrl, fileName, latitude, longitude, quotedMessageId, caption } = body
+    const finalMediaUrl = media || mediaUrl
+    const finalContent = content || caption || ""
 
-    if (!content && !mediaUrl && type !== "location") {
+    if (!finalContent && !finalMediaUrl && type !== "location") {
       return NextResponse.json(
         { error: "Conteúdo da mensagem é obrigatório" },
         { status: 400 }
@@ -135,11 +138,11 @@ export async function POST(
     let result: any
 
     // Enviar mensagem baseado no tipo (agora usando apiToken)
-    switch (type) {
+    switch (type.toLowerCase()) {
       case "text":
         result = await uazapi.sendTextMessage(instanceToken, {
           phone: conversation.contactPhone,
-          message: content,
+          message: finalContent,
           quotedMessageId,
         })
         break
@@ -147,8 +150,8 @@ export async function POST(
       case "image":
         result = await uazapi.sendImage(instanceToken, {
           phone: conversation.contactPhone,
-          media: mediaUrl,
-          caption: content,
+          media: finalMediaUrl,
+          caption: finalContent,
           quotedMessageId,
         })
         break
@@ -156,8 +159,8 @@ export async function POST(
       case "video":
         result = await uazapi.sendVideo(instanceToken, {
           phone: conversation.contactPhone,
-          media: mediaUrl,
-          caption: content,
+          media: finalMediaUrl,
+          caption: finalContent,
           quotedMessageId,
         })
         break
@@ -165,7 +168,7 @@ export async function POST(
       case "audio":
         result = await uazapi.sendAudio(instanceToken, {
           phone: conversation.contactPhone,
-          media: mediaUrl,
+          media: finalMediaUrl,
           quotedMessageId,
         })
         break
@@ -173,9 +176,9 @@ export async function POST(
       case "document":
         result = await uazapi.sendDocument(instanceToken, {
           phone: conversation.contactPhone,
-          media: mediaUrl,
+          media: finalMediaUrl,
           fileName: fileName || "document",
-          caption: content,
+          caption: finalContent,
           quotedMessageId,
         })
         break
@@ -191,7 +194,7 @@ export async function POST(
           phone: conversation.contactPhone,
           latitude,
           longitude,
-          name: content,
+          name: finalContent,
         })
         break
 
@@ -216,14 +219,14 @@ export async function POST(
         conversationId: id,
         direction: "OUTBOUND",
         type: type.toUpperCase() as any,
-        content,
-        mediaUrl,
+        content: finalContent || null,
+        mediaUrl: finalMediaUrl || null,
         mediaFileName: fileName,
         quotedMessageId,
         status: "SENT",
         sentAt: new Date(),
         sentByUserId: session.user.id,
-        metadata: type === "location" ? { latitude, longitude } : undefined,
+        metadata: type.toLowerCase() === "location" ? { latitude, longitude } : undefined,
       },
       include: {
         sentByUser: {
@@ -236,7 +239,7 @@ export async function POST(
     await prisma.whatsAppConversation.update({
       where: { id },
       data: {
-        lastMessage: content?.substring(0, 100) || `[${type}]`,
+        lastMessage: finalContent?.substring(0, 100) || `[${type.toUpperCase()}]`,
         lastMessageAt: new Date(),
       },
     })

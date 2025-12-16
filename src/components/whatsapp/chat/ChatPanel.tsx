@@ -408,7 +408,6 @@ export function ChatPanel({
         )
       )
 
-      setIsRecording(false)
       toast.success("Audio enviado")
     } catch (error) {
       toast.error("Erro ao enviar audio")
@@ -417,7 +416,9 @@ export function ChatPanel({
         prev.map((m) => (m.id === tempId ? { ...m, status: "FAILED" } : m))
       )
     } finally {
+      // Sempre voltar para o modo de texto após enviar/falhar
       setSendingAudio(false)
+      setIsRecording(false)
     }
   }
 
