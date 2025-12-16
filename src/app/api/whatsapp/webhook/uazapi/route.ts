@@ -218,9 +218,31 @@ async function handleUazapiMessage(
   const messageType = message?.type || "text"
   const messageId = message?.id || `msg_${Date.now()}`
   const contactName = chat?.name || phone
-  const timestamp = message?.timestamp || message?.messageTimestamp || Math.floor(Date.now() / 1000)
 
-  console.log("[Webhook] Message content:", content?.substring(0, 100))
+  // Validar timestamp - pode ser em segundos, milissegundos ou inválido
+  let messageDate = new Date()
+  const rawTimestamp = message?.timestamp || message?.messageTimestamp
+  if (rawTimestamp) {
+    // Se timestamp é muito grande, provavelmente é milissegundos
+    const ts = Number(rawTimestamp)
+    if (!isNaN(ts)) {
+      if (ts > 1e12) {
+        // Milissegundos
+        messageDate = new Date(ts)
+      } else if (ts > 1e9) {
+        // Segundos
+        messageDate = new Date(ts * 1000)
+      }
+    }
+    // Validar se a data é razoável (entre 2020 e 2030)
+    const year = messageDate.getFullYear()
+    if (year < 2020 || year > 2030) {
+      console.log("[Webhook] Invalid timestamp, using now:", rawTimestamp)
+      messageDate = new Date()
+    }
+  }
+
+  console.log("[Webhook] Message content:", content?.substring(0, 100), "timestamp:", messageDate.toISOString())
 
   console.log("[Webhook] Processing message from:", phone, "content:", content?.substring(0, 50))
 
@@ -242,7 +264,7 @@ async function handleUazapiMessage(
         status: "OPEN",
         isBot: true,
         lastMessage: content?.substring(0, 100) || `[${messageType}]`,
-        lastMessageAt: new Date(timestamp * 1000),
+        lastMessageAt: messageDate,
         unreadCount: 1,
       },
     })
@@ -256,7 +278,7 @@ async function handleUazapiMessage(
       data: {
         contactName: contactName || conversation.contactName,
         lastMessage: content?.substring(0, 100) || `[${messageType}]`,
-        lastMessageAt: new Date(timestamp * 1000),
+        lastMessageAt: messageDate,
         unreadCount: { increment: 1 },
         status: conversation.status === "CLOSED" ? "OPEN" : conversation.status,
       },
