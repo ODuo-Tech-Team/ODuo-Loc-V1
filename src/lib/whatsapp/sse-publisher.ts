@@ -125,8 +125,13 @@ export async function publishNewMessage(
     direction: string
     type: string
     content?: string
-    contactPhone: string
+    contactPhone?: string
     contactName?: string
+    metadata?: Record<string, any>
+    // Campos de grupo
+    isGroup?: boolean
+    groupName?: string
+    senderName?: string
   }
 ): Promise<void> {
   await publishSSEEvent(tenantId, "new_message", {

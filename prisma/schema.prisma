@@ -1716,6 +1716,7 @@ enum MessageType {
   LOCATION
   CONTACT
   TEMPLATE
+  SYSTEM // Mensagens de sistema/atividade (bot atribuiu, transferiu, etc.)
 }
 
 enum MessageStatus {

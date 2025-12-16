@@ -1,6 +1,104 @@
 import { prisma } from "@/lib/prisma"
 import { autoAssignOnBotTransfer } from "./assignment-service"
 import { getUazapiClient } from "./uazapi-client"
+import { publishNewMessage } from "./sse-publisher"
+
+/**
+ * Tipos de ação do sistema para mensagens de atividade
+ */
+export type SystemActionType =
+  | "bot_enabled"
+  | "bot_disabled"
+  | "bot_transferred"
+  | "agent_assigned"
+  | "status_changed"
+  | "conversation_archived"
+  | "conversation_unarchived"
+  | "tag_added"
+  | "tag_removed"
+
+/**
+ * Registra uma mensagem de sistema/atividade na conversa
+ */
+export async function createSystemMessage(
+  tenantId: string,
+  conversationId: string,
+  action: SystemActionType,
+  actorName: string,
+  details?: Record<string, any>
+): Promise<void> {
+  // Gerar conteúdo legível da mensagem de sistema
+  const content = formatSystemMessage(action, actorName, details)
+
+  // Criar mensagem de sistema
+  const message = await prisma.whatsAppMessage.create({
+    data: {
+      conversationId,
+      direction: "OUTBOUND", // Sistema é considerado "outbound"
+      type: "SYSTEM",
+      content,
+      status: "DELIVERED",
+      metadata: {
+        systemAction: action,
+        actorName,
+        ...details,
+      },
+    },
+  })
+
+  // Publicar via SSE para atualizar chat em tempo real
+  await publishNewMessage(tenantId, conversationId, {
+    id: message.id,
+    direction: "OUTBOUND",
+    type: "SYSTEM",
+    content,
+    metadata: {
+      systemAction: action,
+      actorName,
+      ...details,
+    },
+  })
+}
+
+/**
+ * Formata mensagem de sistema baseada na ação
+ */
+function formatSystemMessage(
+  action: SystemActionType,
+  actorName: string,
+  details?: Record<string, any>
+): string {
+  switch (action) {
+    case "bot_enabled":
+      return `Bot ativado por ${actorName}`
+    case "bot_disabled":
+      return `Bot desativado por ${actorName}`
+    case "bot_transferred":
+      return `Bot transferiu para atendimento humano`
+    case "agent_assigned":
+      return details?.agentName
+        ? `Conversa atribuída a ${details.agentName}`
+        : `${actorName} atribuiu a si mesmo essa conversa`
+    case "status_changed":
+      const statusLabels: Record<string, string> = {
+        PENDING: "pendente",
+        OPEN: "aberta",
+        RESOLVED: "resolvida",
+        CLOSED: "fechada",
+      }
+      return `Conversa foi marcada como ${statusLabels[details?.status] || details?.status} por ${actorName}`
+    case "conversation_archived":
+      return `Conversa arquivada por ${actorName}`
+    case "conversation_unarchived":
+      return `Conversa desarquivada por ${actorName}`
+    case "tag_added":
+      return `Tag "${details?.tag}" adicionada por ${actorName}`
+    case "tag_removed":
+      return `Tag "${details?.tag}" removida por ${actorName}`
+    default:
+      return `Ação do sistema por ${actorName}`
+  }
+}
 
 /**
  * Máquina de Estados do Bot WhatsApp
@@ -259,6 +357,9 @@ export async function handleBotTransfer(
       qualificationScore: qualificationData?.score,
     },
   })
+
+  // Registrar atividade de transferência
+  await createSystemMessage(tenantId, conversationId, "bot_transferred", "Bot")
 
   // Auto-atribuir a um agente
   await autoAssignOnBotTransfer(tenantId, conversationId)

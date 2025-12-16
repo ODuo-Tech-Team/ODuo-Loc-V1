@@ -582,6 +582,14 @@ export function ChatPanel({
                   </div>
                 )}
 
+                {/* Mensagem de sistema/atividade */}
+                {message.type === "SYSTEM" ? (
+                  <div className="flex justify-center my-2">
+                    <div className="bg-zinc-800/80 border border-zinc-700/50 text-zinc-400 text-xs px-4 py-2 rounded-lg max-w-[80%] text-center">
+                      {message.content}
+                    </div>
+                  </div>
+                ) : (
                 <div
                   className={cn(
                     "flex group",
@@ -750,6 +758,7 @@ export function ChatPanel({
                     </div>
                   )}
                 </div>
+                )}
               </div>
             )
           })

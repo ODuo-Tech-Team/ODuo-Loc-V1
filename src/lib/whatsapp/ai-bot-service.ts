@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { getUazapiClient } from "./uazapi-client"
 import { getSystemPrompt, shouldTransferToHuman, isWithinBusinessHours } from "./ai-prompts"
+import { handleBotTransfer, QualificationData, detectEquipmentMentioned } from "./bot-state-machine"
 
 interface ProcessMessageResult {
   shouldRespond: boolean
@@ -289,6 +290,77 @@ async function generateAIResponse(
 }
 
 /**
+ * Detecta se a resposta do bot indica qualificação concluída
+ * (resumo de locação com dados do cliente)
+ */
+function detectQualificationComplete(response: string): { isComplete: boolean; data?: Partial<QualificationData> } {
+  const lower = response.toLowerCase()
+
+  // Padrões que indicam que o bot finalizou a qualificação
+  const qualificationPatterns = [
+    // Resumo estruturado
+    /resumo.*loca[çc][ãa]o/i,
+    /aqui est[áa].*resumo/i,
+    /confirma.*dados/i,
+    // Campos coletados (2+ = qualificado)
+    /nome.*completo.*:/i,
+    /equipamento.*:/i,
+    /per[ií]odo.*:/i,
+    /retirada.*:/i,
+    /entrega.*:/i,
+    /endere[çc]o.*:/i,
+  ]
+
+  // Contar quantos padrões foram encontrados
+  let patternCount = 0
+  for (const pattern of qualificationPatterns) {
+    if (pattern.test(response)) {
+      patternCount++
+    }
+  }
+
+  // Se tem 3+ padrões, considera qualificação concluída
+  if (patternCount >= 3) {
+    const equipments = detectEquipmentMentioned(response)
+    return {
+      isComplete: true,
+      data: {
+        rentalIntent: true,
+        equipmentMentioned: equipments.length > 0 ? equipments : undefined,
+        score: 85, // Score alto para qualificação concluída
+        qualifiedAt: new Date(),
+      },
+    }
+  }
+
+  // Também detectar frases de conclusão
+  const conclusionPhrases = [
+    "agradeço pela sua locação",
+    "ótimo uso do equipamento",
+    "bom trabalho com o equipamento",
+    "qualquer dúvida estamos à disposição",
+    "entraremos em contato",
+    "nossa equipe vai entrar em contato",
+    "um atendente vai continuar",
+  ]
+
+  for (const phrase of conclusionPhrases) {
+    if (lower.includes(phrase)) {
+      return {
+        isComplete: true,
+        data: {
+          rentalIntent: true,
+          score: 80,
+          qualifiedAt: new Date(),
+        },
+      }
+    }
+  }
+
+  return { isComplete: false }
+}
+
+/**
  * Envia resposta do bot para o WhatsApp
  */
 export async function sendBotResponse(
@@ -364,6 +436,30 @@ export async function sendBotResponse(
         lastMessageAt: new Date(),
       },
     })
+
+    // Verificar se a resposta indica qualificação concluída
+    const qualificationResult = detectQualificationComplete(response)
+    if (qualificationResult.isComplete) {
+      console.log("[AI Bot] Qualification complete detected, triggering transfer")
+
+      // Buscar dados da conversa para enriquecer qualificação
+      const conversation = await prisma.whatsAppConversation.findUnique({
+        where: { id: conversationId },
+        select: { contactName: true, contactPhone: true },
+      })
+
+      const qualificationData: QualificationData = {
+        rentalIntent: qualificationResult.data?.rentalIntent ?? true,
+        equipmentMentioned: qualificationResult.data?.equipmentMentioned,
+        customerName: conversation?.contactName || undefined,
+        customerPhone: conversation?.contactPhone,
+        score: qualificationResult.data?.score ?? 85,
+        qualifiedAt: new Date(),
+      }
+
+      // Transferir para humano
+      await handleBotTransfer(tenantId, conversationId, qualificationData)
+    }
   }
 }
 

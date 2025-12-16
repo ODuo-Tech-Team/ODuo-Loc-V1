@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
+import { createSystemMessage } from "@/lib/whatsapp/bot-state-machine"
 
 // PATCH - Habilitar/Desabilitar bot na conversa
 export async function PATCH(
@@ -69,6 +70,38 @@ export async function PATCH(
     })
 
     console.log("[Bot Toggle] Bot", isBot ? "enabled" : "disabled", "for conversation:", id)
+
+    // Registrar atividade de sistema
+    const actorName = session.user.name || "Usuário"
+    if (isBot) {
+      await createSystemMessage(
+        session.user.tenantId,
+        id,
+        "bot_enabled",
+        actorName
+      )
+      await createSystemMessage(
+        session.user.tenantId,
+        id,
+        "status_changed",
+        actorName,
+        { status: "PENDING" }
+      )
+    } else {
+      await createSystemMessage(
+        session.user.tenantId,
+        id,
+        "bot_disabled",
+        actorName
+      )
+      await createSystemMessage(
+        session.user.tenantId,
+        id,
+        "agent_assigned",
+        actorName,
+        { agentName: actorName }
+      )
+    }
 
     return NextResponse.json({
       success: true,
