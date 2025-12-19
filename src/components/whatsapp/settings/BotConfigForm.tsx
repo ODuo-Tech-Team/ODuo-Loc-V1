@@ -22,6 +22,8 @@ import {
   Info,
   Plus,
   X,
+  Bot,
+  AlertTriangle,
 } from "lucide-react"
 import {
   Tooltip,
@@ -130,31 +132,67 @@ export function BotConfigForm({ config, onSave, saving }: BotConfigFormProps) {
     }
   }
 
+  const canEnableBot = config.hasApiKey || apiKey
+
   return (
     <div className="space-y-6">
-      {/* Status do Bot */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
+      {/* Status do Bot - Card Destacado */}
+      <div
+        className={`rounded-xl p-6 border-2 transition-colors ${
+          enabled
+            ? "border-emerald-500/50 bg-emerald-500/5"
+            : "border-zinc-700 bg-zinc-900"
+        }`}
+      >
         <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-emerald-500" />
-              <h3 className="text-lg font-semibold">Bot de IA</h3>
+          <div className="flex items-center gap-4">
+            <div
+              className={`p-4 rounded-full transition-colors ${
+                enabled ? "bg-emerald-500/20" : "bg-zinc-800"
+              }`}
+            >
+              <Bot
+                className={`h-8 w-8 transition-colors ${
+                  enabled ? "text-emerald-500" : "text-zinc-500"
+                }`}
+              />
             </div>
-            <p className="text-sm text-zinc-500">
-              Ative o bot para responder automaticamente as mensagens
-            </p>
+            <div>
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                Bot de IA
+                <Badge
+                  variant={enabled ? "default" : "secondary"}
+                  className={
+                    enabled
+                      ? "bg-emerald-500/20 text-emerald-500 border-emerald-500/30"
+                      : "bg-zinc-700 text-zinc-400"
+                  }
+                >
+                  {enabled ? "Ativo" : "Inativo"}
+                </Badge>
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                {enabled
+                  ? "O bot esta respondendo mensagens automaticamente"
+                  : "Ative para responder mensagens automaticamente"}
+              </p>
+            </div>
           </div>
           <Switch
             checked={enabled}
             onCheckedChange={setEnabled}
-            disabled={!config.hasApiKey && !apiKey}
+            disabled={!canEnableBot}
+            className="scale-125"
           />
         </div>
 
-        {!config.hasApiKey && !apiKey && (
-          <p className="mt-4 text-sm text-amber-500">
-            Configure sua chave da API OpenAI abaixo para habilitar o bot.
-          </p>
+        {!canEnableBot && (
+          <div className="mt-4 flex items-center gap-2 text-amber-500 bg-amber-500/10 p-3 rounded-lg">
+            <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+            <p className="text-sm">
+              Configure sua chave da API OpenAI abaixo para habilitar o bot.
+            </p>
+          </div>
         )}
       </div>
 

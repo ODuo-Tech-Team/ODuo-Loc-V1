@@ -2,8 +2,26 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { MessageCircle, Settings, Wifi, WifiOff, Loader2 } from "lucide-react"
+import { MessageCircle, Settings, Wifi, WifiOff, Loader2, Bot, MoreVertical } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
 import { WhatsAppInbox } from "@/components/whatsapp/inbox/WhatsAppInbox"
 import { ConnectionSetup } from "@/components/whatsapp/settings/ConnectionSetup"
@@ -14,17 +32,29 @@ export default function WhatsAppPage() {
   const [instance, setInstance] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [connecting, setConnecting] = useState(false)
+  const [botEnabled, setBotEnabled] = useState(false)
+  const [togglingBot, setTogglingBot] = useState(false)
+  const [showDisconnectDialog, setShowDisconnectDialog] = useState(false)
 
   const { isConnected: sseConnected, connectionStatus } = useWhatsAppSSE({
     enabled: instance?.status === "CONNECTED",
   })
 
-  // Buscar status da instância
+  // Buscar status da instância e bot
   const fetchInstance = useCallback(async () => {
     try {
-      const response = await fetch("/api/whatsapp/instance")
-      const data = await response.json()
-      setInstance(data.instance)
+      const [instanceRes, botRes] = await Promise.all([
+        fetch("/api/whatsapp/instance"),
+        fetch("/api/whatsapp/bot/config"),
+      ])
+
+      const instanceData = await instanceRes.json()
+      setInstance(instanceData.instance)
+
+      if (botRes.ok) {
+        const botData = await botRes.json()
+        setBotEnabled(botData.config?.enabled ?? false)
+      }
     } catch (error) {
       console.error("Erro ao buscar instância:", error)
       toast.error("Erro ao carregar WhatsApp")
@@ -32,6 +62,30 @@ export default function WhatsAppPage() {
       setLoading(false)
     }
   }, [])
+
+  // Toggle bot
+  const handleToggleBot = async () => {
+    try {
+      setTogglingBot(true)
+      const response = await fetch("/api/whatsapp/bot/config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: !botEnabled }),
+      })
+
+      if (response.ok) {
+        setBotEnabled(!botEnabled)
+        toast.success(botEnabled ? "Bot desativado" : "Bot ativado")
+      } else {
+        const error = await response.json()
+        toast.error(error.error || "Erro ao alterar status do bot")
+      }
+    } catch {
+      toast.error("Erro ao alterar status do bot")
+    } finally {
+      setTogglingBot(false)
+    }
+  }
 
   useEffect(() => {
     fetchInstance()
@@ -176,20 +230,82 @@ export default function WhatsAppPage() {
           </div>
         </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push("/whatsapp/settings")}
-        >
-          <Settings className="h-4 w-4 mr-2" />
-          Configuracoes
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Badge de Status do Bot */}
+          <Badge
+            variant={botEnabled ? "default" : "secondary"}
+            className={`gap-1 cursor-pointer ${
+              botEnabled
+                ? "bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/30"
+                : "bg-zinc-700 text-zinc-400 hover:bg-zinc-600"
+            }`}
+            onClick={handleToggleBot}
+          >
+            <Bot className="h-3 w-3" />
+            {togglingBot ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : botEnabled ? (
+              "Bot Ativo"
+            ) : (
+              "Bot Inativo"
+            )}
+          </Badge>
+
+          {/* Dropdown de Acoes */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => router.push("/whatsapp/settings")}>
+                <Settings className="h-4 w-4 mr-2" />
+                Configuracoes
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleToggleBot} disabled={togglingBot}>
+                <Bot className="h-4 w-4 mr-2" />
+                {botEnabled ? "Desativar Bot" : "Ativar Bot"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setShowDisconnectDialog(true)}
+                className="text-destructive focus:text-destructive"
+              >
+                <WifiOff className="h-4 w-4 mr-2" />
+                Desconectar WhatsApp
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Inbox */}
       <div className="flex-1 overflow-hidden">
         <WhatsAppInbox />
       </div>
+
+      {/* Dialog de Confirmacao de Desconexao */}
+      <AlertDialog open={showDisconnectDialog} onOpenChange={setShowDisconnectDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desconectar WhatsApp?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso irá encerrar a sessão do WhatsApp. Você precisará escanear o QR Code
+              novamente para reconectar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDisconnect}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Desconectar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -36,8 +36,18 @@ import { toast } from "sonner"
 import { BookingTabs } from "@/components/booking"
 import { downloadDocumentAsPDF } from "@/lib/pdf-generator"
 import { EmitirRemessaDialog } from "@/components/fiscal/EmitirRemessaDialog"
+import { EmitirRetornoDialog } from "@/components/fiscal/EmitirRetornoDialog"
 import { ProductInvoiceStatusBadge } from "@/components/fiscal/ProductInvoiceStatusBadge"
 import { ProductInvoiceTypeBadge } from "@/components/fiscal/ProductInvoiceTypeBadge"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { MoreHorizontal, RefreshCw, XCircle } from "lucide-react"
 
 interface BookingItem {
   id: string
@@ -84,6 +94,20 @@ interface Invoice {
   createdAt: string
 }
 
+interface ProductInvoiceItem {
+  id: string
+  equipmentId: string
+  descricao: string
+  ncm: string
+  quantidade: number
+  valorUnitario: number
+  valorTotal: number
+  equipment: {
+    id: string
+    name: string
+  }
+}
+
 interface ProductInvoice {
   id: string
   internalRef: string
@@ -97,6 +121,8 @@ interface ProductInvoice {
   pdfUrl: string | null
   xmlUrl: string | null
   createdAt: string
+  errorMessage?: string | null
+  items?: ProductInvoiceItem[]
   productInvoiceRef?: {
     id: string
     numero: string | null
@@ -119,6 +145,10 @@ export default function DocumentosOrcamentoPage({
   const [generatingReceipt, setGeneratingReceipt] = useState(false)
   const [generatingNFSe, setGeneratingNFSe] = useState(false)
   const [remessaDialogOpen, setRemessaDialogOpen] = useState(false)
+  const [retornoDialogOpen, setRetornoDialogOpen] = useState(false)
+  const [selectedRemessa, setSelectedRemessa] = useState<ProductInvoice | null>(null)
+  const [syncingNfeId, setSyncingNfeId] = useState<string | null>(null)
+  const [cancellingNfeId, setCancellingNfeId] = useState<string | null>(null)
   const [nfeEnabled, setNfeEnabled] = useState(false)
 
   useEffect(() => {
@@ -240,6 +270,67 @@ export default function DocumentosOrcamentoPage({
     } finally {
       setGeneratingNFSe(false)
     }
+  }
+
+  const handleSyncNfe = async (nfeId: string) => {
+    setSyncingNfeId(nfeId)
+    try {
+      const response = await fetch(`/api/product-invoices/${nfeId}/sync`, {
+        method: "POST",
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        toast.success(`Status atualizado: ${data.currentStatus}`)
+        fetchData()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || "Erro ao sincronizar")
+      }
+    } catch {
+      toast.error("Erro ao sincronizar status")
+    } finally {
+      setSyncingNfeId(null)
+    }
+  }
+
+  const handleCancelNfe = async (nfeId: string) => {
+    const justificativa = window.prompt(
+      "Informe a justificativa para cancelamento (mínimo 15 caracteres):"
+    )
+
+    if (!justificativa) return
+
+    if (justificativa.length < 15) {
+      toast.error("Justificativa deve ter no mínimo 15 caracteres")
+      return
+    }
+
+    setCancellingNfeId(nfeId)
+    try {
+      const response = await fetch(`/api/product-invoices/${nfeId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ justificativa }),
+      })
+
+      if (response.ok) {
+        toast.success("NF-e cancelada com sucesso")
+        fetchData()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || "Erro ao cancelar")
+      }
+    } catch {
+      toast.error("Erro ao cancelar NF-e")
+    } finally {
+      setCancellingNfeId(null)
+    }
+  }
+
+  const handleOpenRetornoDialog = (remessa: ProductInvoice) => {
+    setSelectedRemessa(remessa)
+    setRetornoDialogOpen(true)
   }
 
   const formatCurrency = (value: number) => {
@@ -560,33 +651,90 @@ export default function DocumentosOrcamentoPage({
                         {nfe.chaveAcesso || "-"}
                       </TableCell>
                       <TableCell>
-                        <ProductInvoiceStatusBadge status={nfe.status} />
+                        <div className="space-y-1">
+                          <ProductInvoiceStatusBadge status={nfe.status} />
+                          {(nfe.status === "ERROR" || nfe.status === "REJECTED") && nfe.errorMessage && (
+                            <p className="text-xs text-red-400 max-w-[200px] truncate" title={nfe.errorMessage}>
+                              {nfe.errorMessage}
+                            </p>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>{formatCurrency(nfe.valorTotal)}</TableCell>
                       <TableCell>{nfe.emittedAt ? formatDate(nfe.emittedAt) : formatDate(nfe.createdAt)}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          {nfe.pdfUrl && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => window.open(nfe.pdfUrl!, "_blank")}
-                              title="Visualizar PDF"
-                            >
-                              <ExternalLink className="h-4 w-4" />
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
                             </Button>
-                          )}
-                          {nfe.xmlUrl && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => window.open(nfe.xmlUrl!, "_blank")}
-                              title="Baixar XML"
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+
+                            {/* Sincronizar status */}
+                            {["PENDING", "PROCESSING"].includes(nfe.status) && (
+                              <DropdownMenuItem
+                                onClick={() => handleSyncNfe(nfe.id)}
+                                disabled={syncingNfeId === nfe.id}
+                              >
+                                <RefreshCw
+                                  className={`h-4 w-4 mr-2 ${
+                                    syncingNfeId === nfe.id ? "animate-spin" : ""
+                                  }`}
+                                />
+                                Atualizar Status
+                              </DropdownMenuItem>
+                            )}
+
+                            {/* Emitir retorno (apenas para remessa autorizada) */}
+                            {nfe.type === "REMESSA_LOCACAO" &&
+                              nfe.status === "AUTHORIZED" &&
+                              nfe.items &&
+                              nfe.items.length > 0 && (
+                                <DropdownMenuItem onClick={() => handleOpenRetornoDialog(nfe)}>
+                                  <ArrowDownLeft className="h-4 w-4 mr-2" />
+                                  Emitir NF-e de Retorno
+                                </DropdownMenuItem>
+                              )}
+
+                            {/* Download PDF/DANFE */}
+                            {nfe.pdfUrl && (
+                              <DropdownMenuItem
+                                onClick={() => window.open(nfe.pdfUrl!, "_blank")}
+                              >
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                Ver DANFE
+                              </DropdownMenuItem>
+                            )}
+
+                            {/* Download XML */}
+                            {nfe.xmlUrl && (
+                              <DropdownMenuItem
+                                onClick={() => window.open(nfe.xmlUrl!, "_blank")}
+                              >
+                                <Download className="h-4 w-4 mr-2" />
+                                Baixar XML
+                              </DropdownMenuItem>
+                            )}
+
+                            {/* Cancelar */}
+                            {nfe.status === "AUTHORIZED" && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleCancelNfe(nfe.id)}
+                                  className="text-destructive"
+                                  disabled={cancellingNfeId === nfe.id}
+                                >
+                                  <XCircle className="h-4 w-4 mr-2" />
+                                  Cancelar NF-e
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -611,6 +759,22 @@ export default function DocumentosOrcamentoPage({
               : []
           }
           customerName={booking.customer.name}
+          onSuccess={fetchData}
+        />
+      )}
+
+      {/* Dialog de Emissão de NF-e Retorno */}
+      {selectedRemessa && selectedRemessa.items && (
+        <EmitirRetornoDialog
+          open={retornoDialogOpen}
+          onOpenChange={(open) => {
+            setRetornoDialogOpen(open)
+            if (!open) setSelectedRemessa(null)
+          }}
+          remessaId={selectedRemessa.id}
+          remessaNumero={selectedRemessa.numero || selectedRemessa.internalRef}
+          remessaChave={selectedRemessa.chaveAcesso || ""}
+          items={selectedRemessa.items}
           onSuccess={fetchData}
         />
       )}
