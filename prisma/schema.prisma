@@ -22,6 +22,16 @@ model Tenant {
   phone   String
   address String?
 
+  // Endereço completo (para NF-e)
+  street       String? // Logradouro
+  number       String? // Número
+  complement   String? // Complemento
+  neighborhood String? // Bairro
+  city         String? // Cidade
+  state        String? // UF (2 caracteres)
+  zipCode      String? // CEP
+  tradeName    String? // Nome Fantasia
+
   // Integrações
   whatsappToken    String? @db.Text
   whatsappPhone    String?
