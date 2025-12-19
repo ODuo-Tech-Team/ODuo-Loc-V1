@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, description, category, pricePerDay, pricePerHour, quantity, images, purchasePrice, purchaseDate, rentalPeriods, trackingType } = body
+    const { name, description, category, pricePerDay, pricePerHour, quantity, images, purchasePrice, purchaseDate, rentalPeriods, trackingType, ncm, codigoProduto } = body
 
     // rentalPeriods é obrigatório e deve ter pelo menos um período
     // pricePerDay agora é calculado a partir do primeiro período (fallback para compatibilidade)
@@ -125,6 +125,9 @@ export async function POST(request: NextRequest) {
         reservedStock: 0,
         maintenanceStock: 0,
         damagedStock: 0,
+        // Dados fiscais (NF-e)
+        ncm: ncm || null,
+        codigoProduto: codigoProduto || null,
         // Criar períodos de locação se fornecidos
         rentalPeriods: rentalPeriods?.length ? {
           create: rentalPeriods.map((period: { days: number; price: number; label?: string }) => ({

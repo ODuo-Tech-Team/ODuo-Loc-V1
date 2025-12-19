@@ -10,6 +10,9 @@ import {
   Loader2,
   ExternalLink,
   Calendar,
+  Package,
+  ArrowUpRight,
+  ArrowDownLeft,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AdminPageHeader } from "@/components/admin"
@@ -32,6 +35,22 @@ import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { BookingTabs } from "@/components/booking"
 import { downloadDocumentAsPDF } from "@/lib/pdf-generator"
+import { EmitirRemessaDialog } from "@/components/fiscal/EmitirRemessaDialog"
+import { ProductInvoiceStatusBadge } from "@/components/fiscal/ProductInvoiceStatusBadge"
+import { ProductInvoiceTypeBadge } from "@/components/fiscal/ProductInvoiceTypeBadge"
+
+interface BookingItem {
+  id: string
+  quantity: number
+  equipment: {
+    id: string
+    name: string
+    category: string
+    ncm: string | null
+    codigoProduto: string | null
+    pricePerDay: number
+  }
+}
 
 interface Booking {
   id: string
@@ -43,8 +62,14 @@ interface Booking {
     email: string | null
   }
   equipment: {
+    id: string
     name: string
+    category: string
+    ncm: string | null
+    codigoProduto: string | null
+    pricePerDay: number
   }
+  items: BookingItem[]
 }
 
 interface Invoice {
@@ -59,6 +84,26 @@ interface Invoice {
   createdAt: string
 }
 
+interface ProductInvoice {
+  id: string
+  internalRef: string
+  type: "REMESSA_LOCACAO" | "RETORNO_LOCACAO"
+  numero: string | null
+  serie: string | null
+  chaveAcesso: string | null
+  status: string
+  valorTotal: number
+  emittedAt: string | null
+  pdfUrl: string | null
+  xmlUrl: string | null
+  createdAt: string
+  productInvoiceRef?: {
+    id: string
+    numero: string | null
+    chaveAcesso: string | null
+  }
+}
+
 export default function DocumentosOrcamentoPage({
   params,
 }: {
@@ -68,10 +113,13 @@ export default function DocumentosOrcamentoPage({
   const router = useRouter()
   const [booking, setBooking] = useState<Booking | null>(null)
   const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [productInvoices, setProductInvoices] = useState<ProductInvoice[]>([])
   const [loading, setLoading] = useState(true)
   const [generatingContract, setGeneratingContract] = useState(false)
   const [generatingReceipt, setGeneratingReceipt] = useState(false)
   const [generatingNFSe, setGeneratingNFSe] = useState(false)
+  const [remessaDialogOpen, setRemessaDialogOpen] = useState(false)
+  const [nfeEnabled, setNfeEnabled] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -81,17 +129,34 @@ export default function DocumentosOrcamentoPage({
     try {
       setLoading(true)
 
-      // Buscar booking
-      const bookingRes = await fetch(`/api/bookings/${resolvedParams.id}`)
+      // Buscar booking, invoices, product invoices e fiscal config em paralelo
+      const [bookingRes, invoicesRes, productInvoicesRes, fiscalConfigRes] = await Promise.all([
+        fetch(`/api/bookings/${resolvedParams.id}`),
+        fetch(`/api/bookings/${resolvedParams.id}/invoice`),
+        fetch(`/api/product-invoices?bookingId=${resolvedParams.id}`),
+        fetch("/api/fiscal/config"),
+      ])
+
       if (!bookingRes.ok) throw new Error("Orçamento não encontrado")
       const bookingData = await bookingRes.json()
       setBooking(bookingData)
 
       // Buscar invoices (NFS-e)
-      const invoicesRes = await fetch(`/api/bookings/${resolvedParams.id}/invoice`)
       if (invoicesRes.ok) {
         const invoicesData = await invoicesRes.json()
         setInvoices(invoicesData.invoices || [])
+      }
+
+      // Buscar product invoices (NF-e)
+      if (productInvoicesRes.ok) {
+        const productInvoicesData = await productInvoicesRes.json()
+        setProductInvoices(productInvoicesData.productInvoices || [])
+      }
+
+      // Verificar se NF-e está habilitada
+      if (fiscalConfigRes.ok) {
+        const fiscalConfig = await fiscalConfigRes.json()
+        setNfeEnabled(fiscalConfig.nfeEnabled === true)
       }
     } catch (error) {
       console.error("Erro ao carregar dados:", error)
@@ -338,6 +403,39 @@ export default function DocumentosOrcamentoPage({
                 </div>
               </CardContent>
             </Card>
+
+            {/* NF-e Remessa */}
+            {nfeEnabled && (
+              <Card className="bg-zinc-800/50 border-zinc-700">
+                <CardContent className="p-4">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-5 w-5 text-blue-400" />
+                      <h3 className="font-medium">NF-e Remessa</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Nota Fiscal de Remessa para Locação
+                    </p>
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setRemessaDialogOpen(true)}
+                        disabled={!["CONFIRMED", "COMPLETED"].includes(booking.status)}
+                      >
+                        <ArrowUpRight className="h-4 w-4" />
+                        <span className="ml-1">Emitir Remessa</span>
+                      </Button>
+                    </div>
+                    {!["CONFIRMED", "COMPLETED"].includes(booking.status) && (
+                      <p className="text-xs text-amber-400">
+                        Confirme o orçamento para emitir NF-e
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -417,6 +515,105 @@ export default function DocumentosOrcamentoPage({
           )}
         </CardContent>
       </Card>
+
+      {/* NF-e de Produto (Remessa/Retorno) */}
+      {nfeEnabled && (
+        <Card className="bg-zinc-900/50 border-zinc-800">
+          <CardHeader>
+            <CardTitle className="font-headline tracking-wide flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              NF-e de Produto (Remessa/Retorno)
+            </CardTitle>
+            <CardDescription>
+              Notas fiscais de remessa e retorno de equipamentos
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {productInvoices.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhuma NF-e de produto emitida</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-zinc-800">
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Número</TableHead>
+                    <TableHead>Chave de Acesso</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Data</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {productInvoices.map((nfe) => (
+                    <TableRow key={nfe.id} className="border-zinc-800">
+                      <TableCell>
+                        <ProductInvoiceTypeBadge type={nfe.type} />
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {nfe.numero ? `${nfe.numero}/${nfe.serie}` : "-"}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs max-w-[150px] truncate">
+                        {nfe.chaveAcesso || "-"}
+                      </TableCell>
+                      <TableCell>
+                        <ProductInvoiceStatusBadge status={nfe.status} />
+                      </TableCell>
+                      <TableCell>{formatCurrency(nfe.valorTotal)}</TableCell>
+                      <TableCell>{nfe.emittedAt ? formatDate(nfe.emittedAt) : formatDate(nfe.createdAt)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          {nfe.pdfUrl && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => window.open(nfe.pdfUrl!, "_blank")}
+                              title="Visualizar PDF"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {nfe.xmlUrl && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => window.open(nfe.xmlUrl!, "_blank")}
+                              title="Baixar XML"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Dialog de Emissão de NF-e Remessa */}
+      {booking && (
+        <EmitirRemessaDialog
+          open={remessaDialogOpen}
+          onOpenChange={setRemessaDialogOpen}
+          bookingId={booking.id}
+          bookingNumber={booking.bookingNumber}
+          items={booking.items?.length > 0
+            ? booking.items
+            : booking.equipment
+              ? [{ id: "legacy", quantity: 1, equipment: booking.equipment }]
+              : []
+          }
+          customerName={booking.customer.name}
+          onSuccess={fetchData}
+        />
+      )}
     </div>
   )
 }

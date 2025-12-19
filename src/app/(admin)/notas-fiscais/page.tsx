@@ -327,11 +327,11 @@ export default function NotasFiscaisPage() {
       {/* Tabs para NFS-e e NF-e */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="nfse" className="gap-2" disabled={!fiscalConfig.nfseEnabled}>
+          <TabsTrigger value="nfse" className="gap-2">
             <Receipt className="h-4 w-4" />
             NFS-e (Serviços)
           </TabsTrigger>
-          <TabsTrigger value="nfe" className="gap-2" disabled={!fiscalConfig.nfeEnabled}>
+          <TabsTrigger value="nfe" className="gap-2">
             <Package className="h-4 w-4" />
             NF-e (Produtos)
           </TabsTrigger>

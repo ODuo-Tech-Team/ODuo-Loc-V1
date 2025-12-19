@@ -39,6 +39,8 @@ const equipmentSchema = z.object({
   pricePerHour: z.string().optional(),
   quantity: z.string().optional(), // Opcional para SERIALIZED, obrigatório para QUANTITY
   status: z.enum(["AVAILABLE", "RENTED", "MAINTENANCE", "INACTIVE"]),
+  ncm: z.string().optional(),
+  codigoProduto: z.string().optional(),
 })
 
 type EquipmentFormData = z.infer<typeof equipmentSchema>
@@ -94,6 +96,8 @@ export default function EditarEquipamentoPage({
       )
       setValue("quantity", String(equipment.quantity))
       setValue("status", equipment.status)
+      setValue("ncm", equipment.ncm || "")
+      setValue("codigoProduto", equipment.codigoProduto || "")
 
       // Carregar períodos de locação
       if (equipment.rentalPeriods?.length) {
@@ -148,6 +152,9 @@ export default function EditarEquipamentoPage({
           price: p.price,
           label: p.label,
         })),
+        // Dados fiscais (NF-e)
+        ncm: data.ncm || null,
+        codigoProduto: data.codigoProduto || null,
       }
 
       // Incluir quantity apenas para tipo QUANTITY
@@ -234,6 +241,37 @@ export default function EditarEquipamentoPage({
                   {errors.description.message}
                 </p>
               )}
+            </div>
+
+            {/* Dados Fiscais (NCM e Código do Produto) */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="ncm">NCM (Nota Fiscal)</Label>
+                <Input
+                  id="ncm"
+                  placeholder="Ex: 84743100"
+                  maxLength={8}
+                  disabled={isLoading}
+                  {...register("ncm")}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Código NCM para emissão de NF-e de remessa/retorno
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="codigoProduto">Código do Produto</Label>
+                <Input
+                  id="codigoProduto"
+                  placeholder="Ex: EQP001"
+                  maxLength={20}
+                  disabled={isLoading}
+                  {...register("codigoProduto")}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Código interno para identificação na NF-e
+                </p>
+              </div>
             </div>
 
             {/* Categoria */}
