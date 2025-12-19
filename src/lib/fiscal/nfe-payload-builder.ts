@@ -220,6 +220,7 @@ export function buildNfePayload(options: BuildPayloadOptions): NfePayload {
   const payload: NfePayload = {
     // Identificação
     natureza_operacao: getNaturezaOperacao(type),
+    data_emissao: new Date().toISOString(),
     tipo_documento: getTipoDocumento(type),
     finalidade_emissao: 1, // 1 = Normal
     consumidor_final: 0, // 0 = Não (empresa)

@@ -223,6 +223,7 @@ export interface NfeItem {
 export interface NfePayload {
   // Identificação
   natureza_operacao: string // "Remessa para locacao" / "Retorno de locacao"
+  data_emissao: string // ISO 8601
   tipo_documento: number // 0=Entrada, 1=Saída
   finalidade_emissao: number // 1=Normal, 2=Complementar, 3=Ajuste, 4=Devolução
   consumidor_final: number // 0=Não, 1=Sim
