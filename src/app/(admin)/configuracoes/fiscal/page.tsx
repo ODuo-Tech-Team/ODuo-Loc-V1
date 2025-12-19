@@ -304,7 +304,7 @@ export default function ConfiguracaoFiscalPage() {
     try {
       const formData = new FormData()
       formData.append('certificate', certificateFile)
-      formData.append('password', certificatePassword)
+      formData.append('senha', certificatePassword)
 
       const response = await fetch('/api/fiscal/certificate', {
         method: 'POST',
