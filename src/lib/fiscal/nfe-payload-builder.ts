@@ -245,11 +245,13 @@ export function buildNfePayload(options: BuildPayloadOptions): NfePayload {
     codigo_municipio_emitente: tenant.codigoMunicipio || '',
     telefone_emitente: tenant.phone ? onlyNumbers(tenant.phone) : undefined,
 
-    // Destinatário
-    ...(customer.cpfCnpj.length === 11
-      ? { cpf_destinatario: onlyNumbers(customer.cpfCnpj) }
-      : { cnpj_destinatario: onlyNumbers(customer.cpfCnpj) }
-    ),
+    // Destinatário - limpar formatação ANTES de verificar tamanho
+    ...(() => {
+      const cleanDoc = onlyNumbers(customer.cpfCnpj)
+      return cleanDoc.length === 11
+        ? { cpf_destinatario: cleanDoc }
+        : { cnpj_destinatario: cleanDoc }
+    })(),
     nome_destinatario: customer.name,
     inscricao_estadual_destinatario: customer.inscricaoEstadual
       ? onlyNumbers(customer.inscricaoEstadual)
