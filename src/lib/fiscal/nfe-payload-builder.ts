@@ -223,7 +223,8 @@ export function buildNfePayload(options: BuildPayloadOptions): NfePayload {
     data_emissao: new Date().toISOString(),
     tipo_documento: getTipoDocumento(type),
     finalidade_emissao: 1, // 1 = Normal
-    consumidor_final: 0, // 0 = Não (empresa)
+    // Se não contribuinte (sem IE), deve ser consumidor final
+    consumidor_final: getIndicadorIE(customer) === 9 ? 1 : 0,
     presenca_comprador: 9, // 9 = Outros
 
     // Emitente
