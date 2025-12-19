@@ -37,6 +37,8 @@ export async function GET(
                 pricePerDay: true,
                 totalStock: true,
                 availableStock: true,
+                ncm: true,
+                codigoProduto: true,
               },
             },
           },
