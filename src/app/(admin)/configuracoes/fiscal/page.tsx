@@ -139,6 +139,7 @@ export default function ConfiguracaoFiscalPage() {
   const [uploadingCertificate, setUploadingCertificate] = useState(false)
   const [removingCertificate, setRemovingCertificate] = useState(false)
   const [certificatePassword, setCertificatePassword] = useState("")
+  const [certificateFile, setCertificateFile] = useState<File | null>(null)
 
   useEffect(() => {
     fetchConfig()
@@ -275,16 +276,26 @@ export default function ConfiguracaoFiscalPage() {
       .slice(0, 18)
   }
 
-  const handleCertificateUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     if (!file.name.endsWith('.pfx') && !file.name.endsWith('.p12')) {
       toast.error("Arquivo deve ser .pfx ou .p12")
+      e.target.value = ""
       return
     }
 
-    if (!certificatePassword) {
+    setCertificateFile(file)
+  }
+
+  const handleCertificateUpload = async () => {
+    if (!certificateFile) {
+      toast.error("Selecione o arquivo do certificado")
+      return
+    }
+
+    if (!certificatePassword || certificatePassword.trim() === "") {
       toast.error("Informe a senha do certificado")
       return
     }
@@ -292,7 +303,7 @@ export default function ConfiguracaoFiscalPage() {
     setUploadingCertificate(true)
     try {
       const formData = new FormData()
-      formData.append('certificate', file)
+      formData.append('certificate', certificateFile)
       formData.append('password', certificatePassword)
 
       const response = await fetch('/api/fiscal/certificate', {
@@ -304,6 +315,7 @@ export default function ConfiguracaoFiscalPage() {
         const data = await response.json()
         toast.success(`Certificado válido até ${new Date(data.validade).toLocaleDateString('pt-BR')}`)
         setCertificatePassword("")
+        setCertificateFile(null)
         fetchConfig()
       } else {
         const error = await response.json()
@@ -314,8 +326,6 @@ export default function ConfiguracaoFiscalPage() {
       toast.error("Erro ao enviar certificado")
     } finally {
       setUploadingCertificate(false)
-      // Reset file input
-      e.target.value = ""
     }
   }
 
@@ -683,6 +693,25 @@ export default function ConfiguracaoFiscalPage() {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
+                    <Label htmlFor="certificateFile">Arquivo do Certificado</Label>
+                    <Input
+                      id="certificateFile"
+                      type="file"
+                      accept=".pfx,.p12"
+                      onChange={handleFileSelect}
+                      disabled={uploadingCertificate}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Arquivo .pfx ou .p12 do certificado A1
+                    </p>
+                    {certificateFile && (
+                      <p className="text-xs text-green-500">
+                        Arquivo selecionado: {certificateFile.name}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
                     <Label htmlFor="certificatePassword">Senha do Certificado</Label>
                     <Input
                       id="certificatePassword"
@@ -690,33 +719,39 @@ export default function ConfiguracaoFiscalPage() {
                       placeholder="Digite a senha do arquivo .pfx"
                       value={certificatePassword}
                       onChange={(e) => setCertificatePassword(e.target.value)}
+                      disabled={uploadingCertificate}
                     />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="certificateFile">Arquivo do Certificado</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="certificateFile"
-                        type="file"
-                        accept=".pfx,.p12"
-                        onChange={handleCertificateUpload}
-                        disabled={uploadingCertificate || !certificatePassword}
-                        className="flex-1"
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Arquivo .pfx ou .p12 do certificado A1
-                    </p>
                   </div>
                 </div>
 
-                {uploadingCertificate && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    Validando e enviando certificado...
-                  </div>
-                )}
+                <div className="flex items-center gap-4">
+                  <Button
+                    onClick={handleCertificateUpload}
+                    disabled={uploadingCertificate || !certificateFile || !certificatePassword}
+                  >
+                    {uploadingCertificate ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Validando...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Enviar Certificado
+                      </>
+                    )}
+                  </Button>
+
+                  {certificateFile && !uploadingCertificate && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setCertificateFile(null)}
+                    >
+                      Limpar
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {/* Remover Certificado */}
