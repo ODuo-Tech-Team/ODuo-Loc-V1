@@ -26,6 +26,9 @@ Informações da empresa:
 
 /**
  * Gera o system prompt completo
+ * Suporta variáveis em múltiplos formatos:
+ * - {catalog} / {catalogo} / {{catalogo}} - Catálogo de equipamentos
+ * - {company_info} / {empresa} / {{empresa}} - Informações da empresa
  */
 export function getSystemPrompt(
   customPrompt: string | null,
@@ -34,9 +37,22 @@ export function getSystemPrompt(
 ): string {
   const basePrompt = customPrompt || DEFAULT_SYSTEM_PROMPT
 
-  return basePrompt
-    .replace("{company_info}", `Nome: ${companyName}`)
-    .replace("{catalog}", catalogContext)
+  // Substituir variáveis de catálogo (múltiplos formatos)
+  let result = basePrompt
+    .replace(/\{catalog\}/gi, catalogContext)
+    .replace(/\{catalogo\}/gi, catalogContext)
+    .replace(/\{\{catalogo\}\}/gi, catalogContext)
+    .replace(/\{\{catalog\}\}/gi, catalogContext)
+
+  // Substituir variáveis de empresa (múltiplos formatos)
+  const companyInfo = `Nome: ${companyName}`
+  result = result
+    .replace(/\{company_info\}/gi, companyInfo)
+    .replace(/\{empresa\}/gi, companyName)
+    .replace(/\{\{empresa\}\}/gi, companyName)
+    .replace(/\{\{company_info\}\}/gi, companyInfo)
+
+  return result
 }
 
 /**

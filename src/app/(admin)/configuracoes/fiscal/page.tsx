@@ -31,6 +31,10 @@ import {
   AlertCircle,
   Eye,
   RotateCcw,
+  Upload,
+  ShieldCheck,
+  Trash2,
+  Package,
 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
@@ -44,6 +48,7 @@ interface FiscalConfig {
   regimeTributario: string
   codigoMunicipio: string
   nfseEnabled: boolean
+  nfeEnabled: boolean
 
   // Focus NFe
   focusNfeConfigured: boolean
@@ -59,6 +64,18 @@ interface FiscalConfig {
 
   // Template
   descricaoTemplate: string
+
+  // NF-e / Certificado
+  certificadoValido: boolean
+  certificadoValidade: string | null
+  nfeSerie: string
+  nfeProximoNumero: number
+  cfopRemessaDentroEstado: string
+  cfopRemessaForaEstado: string
+  cfopRetornoDentroEstado: string
+  cfopRetornoForaEstado: string
+  icmsCstPadrao: string
+  icmsOrigemPadrao: string
 }
 
 const DEFAULT_TEMPLATE = `Locação de equipamentos conforme reserva #{bookingNumber}.
@@ -94,6 +111,7 @@ export default function ConfiguracaoFiscalPage() {
     regimeTributario: "",
     codigoMunicipio: "",
     nfseEnabled: false,
+    nfeEnabled: false,
     focusNfeConfigured: false,
     focusNfeEnvironment: "HOMOLOGACAO",
     nfseSerie: "1",
@@ -103,10 +121,24 @@ export default function ConfiguracaoFiscalPage() {
     aliquotaIss: 0,
     issRetido: false,
     descricaoTemplate: DEFAULT_TEMPLATE,
+    // NF-e
+    certificadoValido: false,
+    certificadoValidade: null,
+    nfeSerie: "1",
+    nfeProximoNumero: 1,
+    cfopRemessaDentroEstado: "5949",
+    cfopRemessaForaEstado: "6949",
+    cfopRetornoDentroEstado: "1949",
+    cfopRetornoForaEstado: "2949",
+    icmsCstPadrao: "41",
+    icmsOrigemPadrao: "0",
   })
 
   const [newToken, setNewToken] = useState("")
   const [showPreview, setShowPreview] = useState(false)
+  const [uploadingCertificate, setUploadingCertificate] = useState(false)
+  const [removingCertificate, setRemovingCertificate] = useState(false)
+  const [certificatePassword, setCertificatePassword] = useState("")
 
   useEffect(() => {
     fetchConfig()
@@ -125,6 +157,7 @@ export default function ConfiguracaoFiscalPage() {
           regimeTributario: data.regimeTributario || "",
           codigoMunicipio: data.codigoMunicipio || "",
           nfseEnabled: data.nfseEnabled || false,
+          nfeEnabled: data.nfeEnabled || false,
           focusNfeConfigured: data.focusNfeConfigured || false,
           focusNfeEnvironment: data.focusNfeEnvironment || "HOMOLOGACAO",
           nfseSerie: data.nfseSerie || "1",
@@ -134,6 +167,17 @@ export default function ConfiguracaoFiscalPage() {
           aliquotaIss: data.aliquotaIss || 0,
           issRetido: data.issRetido || false,
           descricaoTemplate: data.descricaoTemplate || DEFAULT_TEMPLATE,
+          // NF-e
+          certificadoValido: data.certificadoValido || false,
+          certificadoValidade: data.certificadoValidade || null,
+          nfeSerie: data.nfeSerie || "1",
+          nfeProximoNumero: data.nfeProximoNumero || 1,
+          cfopRemessaDentroEstado: data.cfopRemessaDentroEstado || "5949",
+          cfopRemessaForaEstado: data.cfopRemessaForaEstado || "6949",
+          cfopRetornoDentroEstado: data.cfopRetornoDentroEstado || "1949",
+          cfopRetornoForaEstado: data.cfopRetornoForaEstado || "2949",
+          icmsCstPadrao: data.icmsCstPadrao || "41",
+          icmsOrigemPadrao: data.icmsOrigemPadrao || "0",
         })
       }
     } catch (error) {
@@ -231,6 +275,90 @@ export default function ConfiguracaoFiscalPage() {
       .slice(0, 18)
   }
 
+  const handleCertificateUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.name.endsWith('.pfx') && !file.name.endsWith('.p12')) {
+      toast.error("Arquivo deve ser .pfx ou .p12")
+      return
+    }
+
+    if (!certificatePassword) {
+      toast.error("Informe a senha do certificado")
+      return
+    }
+
+    setUploadingCertificate(true)
+    try {
+      const formData = new FormData()
+      formData.append('certificate', file)
+      formData.append('password', certificatePassword)
+
+      const response = await fetch('/api/fiscal/certificate', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        toast.success(`Certificado válido até ${new Date(data.validade).toLocaleDateString('pt-BR')}`)
+        setCertificatePassword("")
+        fetchConfig()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || "Erro ao enviar certificado")
+      }
+    } catch (error) {
+      console.error("Erro ao enviar certificado:", error)
+      toast.error("Erro ao enviar certificado")
+    } finally {
+      setUploadingCertificate(false)
+      // Reset file input
+      e.target.value = ""
+    }
+  }
+
+  const handleRemoveCertificate = async () => {
+    if (!confirm("Tem certeza que deseja remover o certificado digital?")) {
+      return
+    }
+
+    setRemovingCertificate(true)
+    try {
+      const response = await fetch('/api/fiscal/certificate', {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        toast.success("Certificado removido com sucesso")
+        fetchConfig()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || "Erro ao remover certificado")
+      }
+    } catch (error) {
+      console.error("Erro ao remover certificado:", error)
+      toast.error("Erro ao remover certificado")
+    } finally {
+      setRemovingCertificate(false)
+    }
+  }
+
+  const formatCertificateValidity = (dateString: string | null) => {
+    if (!dateString) return "-"
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffDays = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+    if (diffDays < 0) {
+      return `Expirado em ${date.toLocaleDateString('pt-BR')}`
+    } else if (diffDays <= 30) {
+      return `Expira em ${diffDays} dias (${date.toLocaleDateString('pt-BR')})`
+    }
+    return `Válido até ${date.toLocaleDateString('pt-BR')}`
+  }
+
   const getPreviewText = () => {
     let preview = config.descricaoTemplate
     preview = preview.replace("{bookingNumber}", "RES-001")
@@ -265,14 +393,20 @@ export default function ConfiguracaoFiscalPage() {
             Configurações Fiscais
           </h1>
           <p className="text-muted-foreground mt-1">
-            Configure a emissão de NFS-e via Focus NFe
+            Configure a emissão de NFS-e e NF-e via Focus NFe
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
           {!config.nfseEnabled && (
             <Badge variant="outline" className="gap-1">
               <AlertCircle className="h-3 w-3" />
               NFS-e Desabilitada
+            </Badge>
+          )}
+          {!config.nfeEnabled && (
+            <Badge variant="outline" className="gap-1">
+              <Package className="h-3 w-3" />
+              NF-e Desabilitada
             </Badge>
           )}
           <Link href="/notas-fiscais">
@@ -285,11 +419,13 @@ export default function ConfiguracaoFiscalPage() {
       <ConfigTabs activeTab="fiscal" />
 
       <Tabs defaultValue="empresa" className="space-y-6">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="empresa">Dados da Empresa</TabsTrigger>
           <TabsTrigger value="focusnfe">Focus NFe</TabsTrigger>
-          <TabsTrigger value="nfse">Configuração NFS-e</TabsTrigger>
-          <TabsTrigger value="template">Template de Descrição</TabsTrigger>
+          <TabsTrigger value="certificado">Certificado A1</TabsTrigger>
+          <TabsTrigger value="nfse">Config. NFS-e</TabsTrigger>
+          <TabsTrigger value="nfe">Config. NF-e</TabsTrigger>
+          <TabsTrigger value="template">Template</TabsTrigger>
         </TabsList>
 
         {/* Dados da Empresa */}
@@ -500,6 +636,111 @@ export default function ConfiguracaoFiscalPage() {
           </Card>
         </TabsContent>
 
+        {/* Certificado Digital */}
+        <TabsContent value="certificado">
+          <Card>
+            <CardHeader>
+              <CardTitle>Certificado Digital A1</CardTitle>
+              <CardDescription>
+                O certificado A1 é obrigatório para emissão de NF-e (produto).
+                Para NFS-e, geralmente não é necessário.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Status do Certificado */}
+              <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
+                <div className="flex-1">
+                  <p className="font-medium">Status do Certificado</p>
+                  <p className="text-sm text-muted-foreground">
+                    {config.certificadoValido
+                      ? formatCertificateValidity(config.certificadoValidade)
+                      : "Nenhum certificado configurado"}
+                  </p>
+                </div>
+                {config.certificadoValido ? (
+                  <Badge className="gap-1 bg-green-500">
+                    <ShieldCheck className="h-3 w-3" />
+                    Válido
+                  </Badge>
+                ) : config.certificadoValidade ? (
+                  <Badge variant="destructive" className="gap-1">
+                    <XCircle className="h-3 w-3" />
+                    Expirado
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    Não configurado
+                  </Badge>
+                )}
+              </div>
+
+              {/* Upload de Certificado */}
+              <div className="space-y-4 p-4 border rounded-lg">
+                <h4 className="font-medium">
+                  {config.certificadoValido ? "Substituir Certificado" : "Enviar Certificado"}
+                </h4>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="certificatePassword">Senha do Certificado</Label>
+                    <Input
+                      id="certificatePassword"
+                      type="password"
+                      placeholder="Digite a senha do arquivo .pfx"
+                      value={certificatePassword}
+                      onChange={(e) => setCertificatePassword(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="certificateFile">Arquivo do Certificado</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="certificateFile"
+                        type="file"
+                        accept=".pfx,.p12"
+                        onChange={handleCertificateUpload}
+                        disabled={uploadingCertificate || !certificatePassword}
+                        className="flex-1"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Arquivo .pfx ou .p12 do certificado A1
+                    </p>
+                  </div>
+                </div>
+
+                {uploadingCertificate && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Validando e enviando certificado...
+                  </div>
+                )}
+              </div>
+
+              {/* Remover Certificado */}
+              {config.certificadoValido && (
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={handleRemoveCertificate}
+                    disabled={removingCertificate}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    {removingCertificate ? (
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-2" />
+                    )}
+                    Remover Certificado
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* Configuração NFS-e */}
         <TabsContent value="nfse">
           <Card>
@@ -588,6 +829,188 @@ export default function ConfiguracaoFiscalPage() {
                       setConfig({ ...config, issRetido: checked })
                     }
                   />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Configuração NF-e */}
+        <TabsContent value="nfe">
+          <Card>
+            <CardHeader>
+              <CardTitle>Configuração da NF-e (Produto)</CardTitle>
+              <CardDescription>
+                Defina os valores padrão para emissão de NF-e de remessa/retorno de locação
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {!config.certificadoValido && (
+                <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                  <div className="flex items-center gap-2 text-yellow-600">
+                    <AlertCircle className="h-4 w-4" />
+                    <p className="text-sm font-medium">
+                      Configure o certificado digital A1 para habilitar a emissão de NF-e
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="nfeSerie">Série da NF-e</Label>
+                  <Input
+                    id="nfeSerie"
+                    value={config.nfeSerie}
+                    onChange={(e) =>
+                      setConfig({ ...config, nfeSerie: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Próximo Número</Label>
+                  <Input
+                    value={config.nfeProximoNumero}
+                    disabled
+                    className="bg-muted"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Gerenciado automaticamente
+                  </p>
+                </div>
+              </div>
+
+              {/* CFOPs */}
+              <div className="space-y-4">
+                <h4 className="font-medium">CFOPs para Locação</h4>
+                <p className="text-sm text-muted-foreground">
+                  CFOPs usados nas operações de remessa e retorno de equipamentos em locação
+                </p>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="cfopRemessaDentroEstado">
+                      Remessa - Dentro do Estado
+                    </Label>
+                    <Input
+                      id="cfopRemessaDentroEstado"
+                      value={config.cfopRemessaDentroEstado}
+                      onChange={(e) =>
+                        setConfig({ ...config, cfopRemessaDentroEstado: e.target.value })
+                      }
+                      placeholder="5949"
+                      maxLength={4}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="cfopRemessaForaEstado">
+                      Remessa - Fora do Estado
+                    </Label>
+                    <Input
+                      id="cfopRemessaForaEstado"
+                      value={config.cfopRemessaForaEstado}
+                      onChange={(e) =>
+                        setConfig({ ...config, cfopRemessaForaEstado: e.target.value })
+                      }
+                      placeholder="6949"
+                      maxLength={4}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="cfopRetornoDentroEstado">
+                      Retorno - Dentro do Estado
+                    </Label>
+                    <Input
+                      id="cfopRetornoDentroEstado"
+                      value={config.cfopRetornoDentroEstado}
+                      onChange={(e) =>
+                        setConfig({ ...config, cfopRetornoDentroEstado: e.target.value })
+                      }
+                      placeholder="1949"
+                      maxLength={4}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="cfopRetornoForaEstado">
+                      Retorno - Fora do Estado
+                    </Label>
+                    <Input
+                      id="cfopRetornoForaEstado"
+                      value={config.cfopRetornoForaEstado}
+                      onChange={(e) =>
+                        setConfig({ ...config, cfopRetornoForaEstado: e.target.value })
+                      }
+                      placeholder="2949"
+                      maxLength={4}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* ICMS */}
+              <div className="space-y-4">
+                <h4 className="font-medium">Configuração ICMS</h4>
+                <p className="text-sm text-muted-foreground">
+                  Para locação de equipamentos, geralmente não há incidência de ICMS
+                </p>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="icmsCstPadrao">CST ICMS Padrão</Label>
+                    <Select
+                      value={config.icmsCstPadrao}
+                      onValueChange={(value) =>
+                        setConfig({ ...config, icmsCstPadrao: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="00">00 - Tributada integralmente</SelectItem>
+                        <SelectItem value="10">10 - Tributada com cobrança por ST</SelectItem>
+                        <SelectItem value="20">20 - Com redução de base de cálculo</SelectItem>
+                        <SelectItem value="40">40 - Isenta</SelectItem>
+                        <SelectItem value="41">41 - Não tributada</SelectItem>
+                        <SelectItem value="50">50 - Suspensão</SelectItem>
+                        <SelectItem value="51">51 - Diferimento</SelectItem>
+                        <SelectItem value="60">60 - ICMS cobrado por ST</SelectItem>
+                        <SelectItem value="90">90 - Outras</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Recomendado: 41 (Não tributada) para locação
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="icmsOrigemPadrao">Origem da Mercadoria</Label>
+                    <Select
+                      value={config.icmsOrigemPadrao}
+                      onValueChange={(value) =>
+                        setConfig({ ...config, icmsOrigemPadrao: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">0 - Nacional</SelectItem>
+                        <SelectItem value="1">1 - Estrangeira (importação direta)</SelectItem>
+                        <SelectItem value="2">2 - Estrangeira (adquirida no mercado interno)</SelectItem>
+                        <SelectItem value="3">3 - Nacional (conteúdo importação 40-70%)</SelectItem>
+                        <SelectItem value="4">4 - Nacional (PPB)</SelectItem>
+                        <SelectItem value="5">5 - Nacional (conteúdo importação menor 40%)</SelectItem>
+                        <SelectItem value="6">6 - Estrangeira (importação direta, sem similar)</SelectItem>
+                        <SelectItem value="7">7 - Estrangeira (mercado interno, sem similar)</SelectItem>
+                        <SelectItem value="8">8 - Nacional (conteúdo importação maior 70%)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </CardContent>

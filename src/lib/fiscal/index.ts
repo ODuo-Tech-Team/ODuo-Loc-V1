@@ -39,3 +39,12 @@ export { FocusNfeClient, createFocusNfeClient } from './focus-nfe-client'
 
 // Serviço NFS-e
 export { NfseService, nfseService } from './nfse-service'
+
+// Serviço NF-e (Produto)
+export { NfeService, nfeService } from './nfe-service'
+
+// Builder de payload NF-e
+export { buildNfePayload, validateNfeData } from './nfe-payload-builder'
+
+// Serviço de Certificado Digital
+export { CertificateService, certificateService } from './certificate-service'

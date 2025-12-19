@@ -33,6 +33,7 @@ export async function GET() {
         regimeTributario: true,
         codigoMunicipio: true,
         nfseEnabled: true,
+        nfeEnabled: true,
         fiscalConfig: {
           select: {
             id: true,
@@ -44,7 +45,17 @@ export async function GET() {
             aliquotaIss: true,
             issRetido: true,
             descricaoTemplate: true,
-            // Não retornamos o token por segurança
+            // NF-e config
+            certificadoValidade: true,
+            nfeSerie: true,
+            nfeProximoNumero: true,
+            cfopRemessaDentroEstado: true,
+            cfopRemessaForaEstado: true,
+            cfopRetornoDentroEstado: true,
+            cfopRetornoForaEstado: true,
+            icmsCstPadrao: true,
+            icmsOrigemPadrao: true,
+            // Não retornamos o token nem certificado por segurança
           },
         },
       },
@@ -54,6 +65,11 @@ export async function GET() {
       return NextResponse.json({ error: 'Tenant não encontrado' }, { status: 404 })
     }
 
+    // Verificar validade do certificado
+    const certificadoValido = tenant.fiscalConfig?.certificadoValidade
+      ? new Date(tenant.fiscalConfig.certificadoValidade) > new Date()
+      : false
+
     return NextResponse.json({
       // Dados fiscais do tenant
       cnpj: tenant.cnpj,
@@ -62,6 +78,7 @@ export async function GET() {
       regimeTributario: tenant.regimeTributario,
       codigoMunicipio: tenant.codigoMunicipio,
       nfseEnabled: tenant.nfseEnabled,
+      nfeEnabled: tenant.nfeEnabled,
 
       // Configuração Focus NFe
       focusNfeConfigured: !!tenant.fiscalConfig,
@@ -77,6 +94,18 @@ export async function GET() {
 
       // Template
       descricaoTemplate: tenant.fiscalConfig?.descricaoTemplate || DEFAULT_DESCRIPTION_TEMPLATE,
+
+      // Configuração NF-e
+      certificadoValido,
+      certificadoValidade: tenant.fiscalConfig?.certificadoValidade,
+      nfeSerie: tenant.fiscalConfig?.nfeSerie || '1',
+      nfeProximoNumero: tenant.fiscalConfig?.nfeProximoNumero || 1,
+      cfopRemessaDentroEstado: tenant.fiscalConfig?.cfopRemessaDentroEstado || '5949',
+      cfopRemessaForaEstado: tenant.fiscalConfig?.cfopRemessaForaEstado || '6949',
+      cfopRetornoDentroEstado: tenant.fiscalConfig?.cfopRetornoDentroEstado || '1949',
+      cfopRetornoForaEstado: tenant.fiscalConfig?.cfopRetornoForaEstado || '2949',
+      icmsCstPadrao: tenant.fiscalConfig?.icmsCstPadrao || '41',
+      icmsOrigemPadrao: tenant.fiscalConfig?.icmsOrigemPadrao || '0',
     })
   } catch (error) {
     console.error('Erro ao buscar configuração fiscal:', error)

@@ -4,6 +4,8 @@ import type {
   FocusNfeEnvironment,
   NfsePayload,
   FocusNfeResponse,
+  NfePayload,
+  FocusNfeNfeResponse,
 } from './types'
 import {
   FocusNfeApiError,
@@ -296,6 +298,131 @@ export class FocusNfeClient {
       // Outros erros podem ser de rede
       throw error
     }
+  }
+
+  // ============================================
+  // Métodos para NF-e (Nota Fiscal Eletrônica de Produto)
+  // ============================================
+
+  /**
+   * Emite uma NF-e (Nota Fiscal Eletrônica de Produto)
+   * @param ref - Referência única (gerada internamente)
+   * @param payload - Dados da NF-e
+   */
+  async emitirNfe(ref: string, payload: NfePayload): Promise<FocusNfeNfeResponse> {
+    console.log('[Focus NFe] ========== EMITINDO NF-e ==========')
+    console.log('[Focus NFe] Referência:', ref)
+    console.log('[Focus NFe] Natureza da Operação:', payload.natureza_operacao)
+    console.log('[Focus NFe] CFOP:', payload.items?.[0]?.cfop)
+    console.log('[Focus NFe] Itens:', payload.items?.length)
+    return this.request<FocusNfeNfeResponse>('POST', `/nfe?ref=${ref}`, payload)
+  }
+
+  /**
+   * Consulta o status de uma NF-e
+   * @param ref - Referência da NF-e
+   */
+  async consultarNfe(ref: string): Promise<FocusNfeNfeResponse> {
+    console.log('[Focus NFe] Consultando NF-e:', ref)
+    return this.request<FocusNfeNfeResponse>('GET', `/nfe/${ref}`)
+  }
+
+  /**
+   * Consulta uma NF-e pela chave de acesso (44 dígitos)
+   * @param chave - Chave de acesso da NF-e
+   */
+  async consultarNfePorChave(chave: string): Promise<FocusNfeNfeResponse> {
+    console.log('[Focus NFe] Consultando NF-e por chave:', chave)
+    return this.request<FocusNfeNfeResponse>('GET', `/nfe_chave/${chave}`)
+  }
+
+  /**
+   * Cancela uma NF-e autorizada
+   * @param ref - Referência da NF-e
+   * @param justificativa - Motivo do cancelamento (mínimo 15 caracteres)
+   */
+  async cancelarNfe(ref: string, justificativa: string): Promise<FocusNfeNfeResponse> {
+    if (justificativa.length < 15) {
+      throw new FocusNfeApiError(
+        'Justificativa de cancelamento deve ter no mínimo 15 caracteres',
+        [{ codigo: 'JUSTIFICATIVA_CURTA', mensagem: 'Mínimo 15 caracteres' }]
+      )
+    }
+
+    console.log('[Focus NFe] Cancelando NF-e:', ref)
+    return this.request<FocusNfeNfeResponse>('DELETE', `/nfe/${ref}`, {
+      justificativa,
+    })
+  }
+
+  /**
+   * Emite uma Carta de Correção para NF-e
+   * @param ref - Referência da NF-e
+   * @param correcao - Texto da correção (mínimo 15 caracteres)
+   */
+  async cartaCorrecaoNfe(ref: string, correcao: string): Promise<FocusNfeNfeResponse> {
+    if (correcao.length < 15) {
+      throw new FocusNfeApiError(
+        'Texto da correção deve ter no mínimo 15 caracteres',
+        [{ codigo: 'CORRECAO_CURTA', mensagem: 'Mínimo 15 caracteres' }]
+      )
+    }
+
+    console.log('[Focus NFe] Carta de Correção NF-e:', ref)
+    return this.request<FocusNfeNfeResponse>('POST', `/nfe/${ref}/carta_correcao`, {
+      correcao,
+    })
+  }
+
+  /**
+   * Inutiliza uma faixa de numeração de NF-e
+   * @param modelo - Modelo da nota (55=NF-e, 65=NFC-e)
+   * @param serie - Série da nota
+   * @param numeroInicial - Número inicial da faixa
+   * @param numeroFinal - Número final da faixa
+   * @param justificativa - Motivo da inutilização (mínimo 15 caracteres)
+   */
+  async inutilizarNumeracao(
+    modelo: string,
+    serie: string,
+    numeroInicial: number,
+    numeroFinal: number,
+    justificativa: string
+  ): Promise<FocusNfeNfeResponse> {
+    if (justificativa.length < 15) {
+      throw new FocusNfeApiError(
+        'Justificativa deve ter no mínimo 15 caracteres',
+        [{ codigo: 'JUSTIFICATIVA_CURTA', mensagem: 'Mínimo 15 caracteres' }]
+      )
+    }
+
+    console.log('[Focus NFe] Inutilizando numeração:', { modelo, serie, numeroInicial, numeroFinal })
+    return this.request<FocusNfeNfeResponse>('POST', `/nfe/inutilizacao`, {
+      modelo,
+      serie,
+      numero_inicial: numeroInicial,
+      numero_final: numeroFinal,
+      justificativa,
+    })
+  }
+
+  /**
+   * Reenvia email com a NF-e para os destinatários
+   * @param ref - Referência da NF-e
+   * @param emails - Lista de emails para envio
+   */
+  async reenviarEmailNfe(ref: string, emails: string[]): Promise<void> {
+    if (emails.length === 0) {
+      throw new FocusNfeApiError(
+        'É necessário informar pelo menos um email',
+        [{ codigo: 'EMAIL_REQUIRED', mensagem: 'Informe ao menos um email' }]
+      )
+    }
+
+    console.log('[Focus NFe] Reenviando email NF-e:', ref)
+    await this.request('POST', `/nfe/${ref}/email`, {
+      emails: emails,
+    })
   }
 }
 

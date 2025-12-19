@@ -36,7 +36,8 @@ model Tenant {
   codigoMunicipio    String? // Código IBGE do município
 
   // Feature Flags / Módulos
-  nfseEnabled          Boolean @default(false) // Notas Fiscais (NFS-e)
+  nfseEnabled          Boolean @default(false) // Notas Fiscais de Serviço (NFS-e)
+  nfeEnabled           Boolean @default(false) // Notas Fiscais de Produto (NF-e)
   stockEnabled         Boolean @default(true) // Gestão de Estoque
   financialEnabled     Boolean @default(true) // Módulo Financeiro
   reportsEnabled       Boolean @default(true) // Relatórios Avançados
@@ -65,9 +66,10 @@ model Tenant {
   webhooks       Webhook[]
   equipmentCosts EquipmentCost[]
   stockMovements StockMovement[]
-  fiscalConfig   TenantFiscalConfig?
-  invoices       Invoice[]
-  subscription   Subscription?
+  fiscalConfig    TenantFiscalConfig?
+  invoices        Invoice[]
+  productInvoices ProductInvoice[]
+  subscription    Subscription?
 
   // Transações Financeiras
   transactionCategories TransactionCategory[]
@@ -276,6 +278,13 @@ model Equipment {
 
   // Módulo Comercial
   leadInterests LeadEquipmentInterest[]
+
+  // Dados fiscais para NF-e
+  ncm           String? // Código NCM (8 dígitos)
+  codigoProduto String? // Código interno para NF-e
+
+  // Relação com itens de NF-e de produto
+  productInvoiceItems ProductInvoiceItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -495,12 +504,13 @@ model Booking {
   googleEventId String?
 
   // Relações
-  documents      BookingDocument[]
-  items          BookingItem[]
-  stockMovements StockMovement[]
-  invoices       Invoice[]
-  fees           BookingFee[] // Multas aplicadas
-  checklists     BookingChecklist[]
+  documents       BookingDocument[]
+  items           BookingItem[]
+  stockMovements  StockMovement[]
+  invoices        Invoice[]
+  productInvoices ProductInvoice[] // NF-e de produto (remessa/retorno)
+  fees            BookingFee[] // Multas aplicadas
+  checklists      BookingChecklist[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -909,6 +919,29 @@ model TenantFiscalConfig {
   descricaoTemplate String? @db.Text
   // Variáveis: {bookingNumber}, {startDate}, {endDate}, {totalDays}, {customerName}, {itemsList}, {totalPrice}
 
+  // ============================================
+  // Certificado Digital A1 (para NF-e)
+  // ============================================
+  certificadoDigital  Bytes? // Arquivo .pfx criptografado
+  certificadoSenha    String?   @db.Text // Senha criptografada
+  certificadoValidade DateTime? // Data de validade
+
+  // ============================================
+  // Configuração NF-e (Nota Fiscal de Produto)
+  // ============================================
+  nfeSerie         String @default("1")
+  nfeProximoNumero Int    @default(1)
+
+  // CFOPs padrão para locação
+  cfopRemessaDentroEstado  String @default("5949")
+  cfopRemessaForaEstado    String @default("6949")
+  cfopRetornoDentroEstado  String @default("1949")
+  cfopRetornoForaEstado    String @default("2949")
+
+  // CST ICMS padrão (normalmente não tributado para locação)
+  icmsCstPadrao    String @default("41") // 41=Não tributado
+  icmsOrigemPadrao String @default("0") // 0=Nacional
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -974,6 +1007,147 @@ model Invoice {
   @@index([bookingId])
   @@index([internalRef])
   @@index([tenantId, createdAt])
+}
+
+// ============================================
+// INTEGRAÇÃO FISCAL - NF-e (Nota Fiscal Eletrônica de Produto)
+// ============================================
+
+// Tipo de NF-e de Produto
+enum ProductInvoiceType {
+  REMESSA_LOCACAO // Saída - equipamento sai para cliente
+  RETORNO_LOCACAO // Entrada - equipamento volta do cliente
+}
+
+// Status da NF-e de Produto
+enum ProductInvoiceStatus {
+  PENDING // Aguardando envio
+  PROCESSING // Enviada, aguardando SEFAZ
+  AUTHORIZED // Autorizada
+  REJECTED // Rejeitada pela SEFAZ
+  CANCELLED // Cancelada
+  DENEGADA // Uso denegado
+  ERROR // Erro no processamento
+}
+
+// NF-e de Produto (Remessa/Retorno de Locação)
+model ProductInvoice {
+  id          String @id @default(cuid())
+  internalRef String @unique // Referência interna enviada ao Focus NFe
+
+  // Tipo da operação
+  type ProductInvoiceType
+
+  // Dados da NF-e (retornados pela SEFAZ)
+  numero               String? // Número da NF-e
+  serie                String? // Série
+  chaveAcesso          String? // Chave de acesso 44 dígitos
+  protocoloAutorizacao String? // Protocolo SEFAZ
+  dataAutorizacao      DateTime?
+
+  // Status
+  status         ProductInvoiceStatus @default(PENDING)
+  focusNfeStatus String?
+
+  // URLs dos documentos
+  xmlUrl String?
+  pdfUrl String? // DANFE
+
+  // Dados fiscais da operação
+  naturezaOperacao String // "Remessa para locacao" / "Retorno de locacao"
+  cfop             String // 5949/6949 (remessa) ou 1949/2949 (retorno)
+
+  // Valores totais
+  valorProdutos Float
+  valorFrete    Float @default(0)
+  valorTotal    Float
+
+  // Tributos (normalmente zerados/suspensos para locação)
+  baseIcms     Float   @default(0)
+  valorIcms    Float   @default(0)
+  icmsSituacao String? // CST/CSOSN
+
+  // Referência a NF-e anterior (para retorno)
+  nfeReferenciada       String? // Chave da NF-e de remessa
+  productInvoiceRefId   String? // ID interno da NF-e de remessa
+  productInvoiceRef     ProductInvoice?  @relation("NFeReferencia", fields: [productInvoiceRefId], references: [id])
+  productInvoicesRefs   ProductInvoice[] @relation("NFeReferencia")
+
+  // Destinatário (snapshot)
+  destNome              String
+  destCpfCnpj           String
+  destInscricaoEstadual String?
+  destEndereco          Json? // { logradouro, numero, bairro, cidade, uf, cep, codigoMunicipio }
+
+  // Relacionamentos
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Itens da NF-e
+  items ProductInvoiceItem[]
+
+  // Erros e retry
+  errorCode    String?
+  errorMessage String? @db.Text
+  retryCount   Int     @default(0)
+
+  // Cancelamento
+  cancelledAt          DateTime?
+  cancellationProtocol String?
+  cancellationReason   String?   @db.Text
+
+  // Timestamps
+  emittedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([tenantId, status])
+  @@index([tenantId, type])
+  @@index([bookingId])
+  @@index([chaveAcesso])
+  @@index([tenantId, createdAt])
+}
+
+// Item da NF-e de Produto
+model ProductInvoiceItem {
+  id String @id @default(cuid())
+
+  productInvoiceId String
+  productInvoice   ProductInvoice @relation(fields: [productInvoiceId], references: [id], onDelete: Cascade)
+
+  // Dados do produto/equipamento
+  equipmentId String
+  equipment   Equipment @relation(fields: [equipmentId], references: [id])
+
+  numeroItem    Int // Sequencial 1, 2, 3...
+  codigoProduto String // Código interno
+  descricao     String
+  ncm           String // Código NCM 8 dígitos
+  cfop          String // CFOP do item
+
+  // Quantidades
+  quantidade    Float
+  unidade       String @default("UN")
+  valorUnitario Float
+  valorTotal    Float
+
+  // Tributos do item
+  icmsOrigem      String @default("0") // 0=Nacional
+  icmsCst         String @default("41") // 41=Não tributado (locação)
+  icmsBaseCalculo Float  @default(0)
+  icmsAliquota    Float  @default(0)
+  icmsValor       Float  @default(0)
+
+  pisCst   String @default("08") // 08=Sem incidência
+  cofinsCst String @default("08") // 08=Sem incidência
+
+  createdAt DateTime @default(now())
+
+  @@index([productInvoiceId])
+  @@index([equipmentId])
 }
 
 // ============================================
